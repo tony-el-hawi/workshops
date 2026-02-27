@@ -1,0 +1,224 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: '[Lab-Archi-Task5] Stack to create a launch configuration for wordpress EC2 servers.'
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label: 
+        default: "Global"
+      Parameters: 
+        - StudentLabTrigram
+    - Label:
+        default: Database Parameters
+      Parameters:
+        - DatabaseHostName
+        - DatabaseUsername
+        - DatabasePassword
+    # - Label:
+    #     default: WordPress Parameters
+    #   Parameters:
+    #     - Username
+    #     - Password
+    #     - Email
+    - Label:
+        default: Other Parameters
+      Parameters:
+        - EC2ServerInstanceType
+    ParameterLabels:
+      DatabaseHostName:
+        default: Database endpoint
+      DatabaseUsername:
+        default: Database User Name
+      DatabasePassword:
+        default: Database Password
+      EC2ServerInstanceType:
+        default: Instance Type
+      # Username:
+      #   default: WordPress admin username
+      # Password:
+      #   default: WordPress admin password
+      # Email:
+      #   default: WordPress admin email address
+
+Parameters:
+  StudentLabTrigram:
+    Description: Your unique 3-letter trigram for this course (all lowercase) e.g. tel
+    Type: String
+    MinLength: 3
+    MaxLength: 3
+    AllowedPattern: '^[a-z]{3}$'
+    ConstraintDescription: Must be exactly 3 lowercase letters
+
+  DatabaseHostName:
+    Description: Amazon RDS DB Endpoint e.g. abc-aurora-cluster.cluster-abc.eu-central-1.rds.amazonaws.com    
+    Type: String
+
+  DatabaseUsername:
+    AllowedPattern: ^([a-zA-Z0-9]*)$
+    Description: The Amazon RDS username.
+    Type: String
+    Default: admin
+
+  DatabasePassword:
+    Description: The Amazon RDS password.
+    Type: String
+    Default: LabPassword123!
+
+  EC2ServerInstanceType:
+    Description: Amazon EC2 Instance Type
+    Type: String
+    Default: t3.nano
+    AllowedValues:
+      - t3.nano
+      - t3.micro
+      - t3.small
+      
+  ALBDnsName:
+    Description: Application Load Balancer DNS e.g. abc-toto-1234567.eu-central-1.elb.amazonaws.com.
+    Type: String
+
+  WPElasticFileSystemID:
+    Description: EFS File System ID e.g. fs-01234567890123a45.
+    Type: String
+
+Resources:
+  WebTierSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for web instances
+      GroupName: Wordpress Servers Security Group
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId:
+            Fn::ImportValue:
+              !Sub '${StudentLabTrigram}-AppInstanceSecurityGroup-ID'
+      VpcId:
+        Fn::ImportValue:
+          !Sub '${StudentLabTrigram}-VPC-ID'
+
+  EFSSecurityGroupInboundRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      FromPort: 2049
+      ToPort: 2049
+      SourceSecurityGroupId: !Ref WebTierSecurityGroup
+      GroupId:
+        Fn::ImportValue:
+          !Sub '${StudentLabTrigram}-EFSMountTargetSecurityGroup-ID'
+
+  RDSSecurityGroupInboundRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      SourceSecurityGroupId: !Ref WebTierSecurityGroup
+      GroupId:
+        Fn::ImportValue:
+          !Sub '${StudentLabTrigram}-RDSSecurityGroup-ID'
+
+# Lab Launch Template
+  LabLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub '${StudentLabTrigram}-LabLaunchTemplate'
+      LaunchTemplateData:
+        UserData:
+          "Fn::Base64":
+            !Sub
+            - |
+              #!/bin/bash -xe
+              DB_NAME=WPDatabase
+              DB_HOSTNAME=${DatabaseHostName}
+              DB_USERNAME="${DatabaseUsername}"
+              DB_PASSWORD="${DatabasePassword}"
+              WP_ADMIN=wpadmin
+              WP_PASSWORD=wpadmin1234
+              WP_EMAIL=admin@live.fr
+              LB_HOSTNAME=${ALBDNSName}
+              yum update -y
+              yum install -y amazon-linux-extras
+              yum install -y awslogs httpd mysql gcc-c++
+              amazon-linux-extras enable php7.4
+              yum clean metadata
+              yum install -y php php-{pear,cgi,common,curl,mbstring,gd,mysqlnd,gettext,bcmath,json,xml,fpm,intl,zip,imap,devel,opcache}
+              systemctl enable nfs-server.service
+              systemctl start nfs-server.service
+              mkdir -p /var/www/wordpress
+              mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /var/www/wordpress
+
+              ## create site config
+              cat <<EOF >/etc/httpd/conf.d/wordpress.conf
+              ServerName 127.0.0.1:80
+              DocumentRoot /var/www/wordpress
+              <Directory /var/www/wordpress>
+                Options Indexes FollowSymLinks
+                AllowOverride All
+                Require all granted
+              </Directory>
+              EOF
+              
+              pecl install igbinary
+              cd /tmp
+
+              ## install WordPress and WP CLI
+              curl -o /bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+              chmod +x /bin/wp
+              wget -P /tmp/ https://wordpress.org/latest.tar.gz
+              tar -vxzf latest.tar.gz -C /var/www/
+              cp /var/www/wordpress/wp-config-sample.php /var/www/wordpress/wp-config.php
+              cd /var/www/wordpress/
+              sed -i 's/database_name_here/'"$DB_NAME"'/' wp-config.php
+              sed -i 's/username_here/'"$DB_USERNAME"'/' wp-config.php
+              sed -i 's/password_here/'"$DB_PASSWORD"'/' wp-config.php
+              sed -i 's/localhost/'"$DB_HOSTNAME"'/' wp-config.php
+
+                # install WordPress if not installed
+                # use public alb host name if wp domain name was empty
+              if ! $(wp core is-installed --allow-root); then
+                  wp core install --url="http://$LB_HOSTNAME" --title='Wordpress on AWS' --admin_user="$WP_ADMIN" --admin_password="$WP_PASSWORD" --admin_email="$WP_EMAIL" --allow-root
+                  wp plugin install w3-total-cache --allow-root
+                  chown -R apache:apache /var/www/wordpress
+                  chmod u+wrx /var/www/wordpress/wp-content/*
+                  if [ ! -f /var/www/wordpress/opcache-instanceid.php ]; then
+                    wget -P /var/www/wordpress/ https://s3.amazonaws.com/aws-refarch/wordpress/latest/bits/opcache-instanceid.php
+                  fi
+              fi
+              RESULT=$?
+              echo $RESULT
+              if [ $RESULT -eq 0 ]; then
+                  touch /var/www/wordpress/wordpress.initialized
+              else
+                  touch /var/www/wordpress/wordpress.failed
+              fi
+
+              ## install opcache
+              # create hidden opcache directory locally & change owner to apache
+
+              mkdir -p /var/www/.opcache
+              # enable opcache in /etc/php-7.0.d/10-opcache.ini
+              sed -i 's/;opcache.file_cache=.*/opcache.file_cache=\/var\/www\/.opcache/' /etc/php.d/10-opcache.ini
+              sed -i 's/opcache.memory_consumption=.*/opcache.memory_consumption=512/' /etc/php.d/10-opcache.ini
+              # download opcache-instance.php to verify opcache status
+              if [ ! -f /var/www/wordpress/opcache-instanceid.php ]; then
+                  wget -P /var/www/wordpress/ https://s3.amazonaws.com/aws-refarch/wordpress/latest/bits/opcache-instanceid.php
+              fi
+
+              chkconfig httpd on
+              service httpd start
+            - ElasticFileSystem: !Ref WPElasticFileSystemID
+              ALBDNSName: !Ref ALBDnsName
+        ImageId: '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2}}'
+        SecurityGroupIds:
+          - !Ref WebTierSecurityGroup
+        InstanceType: !Ref EC2ServerInstanceType
+
+Outputs:
+  WPLaunchTemplate:
+    Description: 'Launch Template for WordPress'
+    Value:
+      !Ref LabLaunchTemplate
