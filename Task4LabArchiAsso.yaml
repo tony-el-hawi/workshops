@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
 
-Description: '[Lab-Archi-Task5] Stack to create a launch configuration for wordpress EC2 servers.'
+Description: '[Lab-Archi-Task4] Stack to create a launch template for WordPress EC2 servers with enhanced error handling and validation.'
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -10,36 +10,33 @@ Metadata:
       Parameters: 
         - StudentLabTrigram
     - Label:
-        default: Database Parameters
+        default: "Database Configuration (from Task1 Outputs)"
       Parameters:
         - DatabaseHostName
         - DatabaseUsername
         - DatabasePassword
-    # - Label:
-    #     default: WordPress Parameters
-    #   Parameters:
-    #     - Username
-    #     - Password
-    #     - Email
     - Label:
-        default: Other Parameters
+        default: "Infrastructure Configuration (from Task2/Task3 Outputs)"
+      Parameters:
+        - ALBDnsName
+        - WPElasticFileSystemID
+    - Label:
+        default: "EC2 Configuration"
       Parameters:
         - EC2ServerInstanceType
     ParameterLabels:
       DatabaseHostName:
-        default: Database endpoint
+        default: "Aurora Cluster Endpoint (from Task1 Outputs)"
       DatabaseUsername:
-        default: Database User Name
+        default: "Aurora Master Username (from Task1 Outputs - default: admin)"
       DatabasePassword:
-        default: Database Password
+        default: "Aurora Master Password (from Task1 Outputs - default: LabPassword123!)"
+      ALBDnsName:
+        default: "Application Load Balancer DNS Name (from Task3 Outputs)"
+      WPElasticFileSystemID:
+        default: "EFS File System ID (from Task2 Outputs - format: fs-xxxxx)"
       EC2ServerInstanceType:
-        default: Instance Type
-      # Username:
-      #   default: WordPress admin username
-      # Password:
-      #   default: WordPress admin password
-      # Email:
-      #   default: WordPress admin email address
+        default: "EC2 Instance Type"
 
 Parameters:
   StudentLabTrigram:
@@ -50,44 +47,71 @@ Parameters:
     AllowedPattern: '^[a-z]{3}$'
     ConstraintDescription: Must be exactly 3 lowercase letters
 
+  # Database Parameters - These come from Task1 Stack Outputs
   DatabaseHostName:
-    Description: Amazon RDS DB Endpoint e.g. abc-aurora-cluster.cluster-abc.eu-central-1.rds.amazonaws.com    
+    Description: |
+      Aurora Cluster WRITE Endpoint from Task1 Outputs.
+      Format: xxx-aurora-cluster.cluster-xxxxx.REGION.rds.amazonaws.com
+      IMPORTANT: Use the CLUSTER endpoint, NOT the instance endpoint!
     Type: String
+    AllowedPattern: '^[a-zA-Z0-9\-]+\.cluster-[a-zA-Z0-9]+\.[a-z]{2}-[a-z]+-[0-9]\.rds\.amazonaws\.com$'
+    ConstraintDescription: |
+      Must be a valid Aurora CLUSTER endpoint format.
+      Example: abc-aurora-cluster.cluster-abc123.eu-central-1.rds.amazonaws.com
 
   DatabaseUsername:
-    AllowedPattern: ^([a-zA-Z0-9]*)$
-    Description: The Amazon RDS username.
+    Description: Aurora master username (default from Task1 is 'admin')
     Type: String
     Default: admin
+    AllowedPattern: ^([a-zA-Z][a-zA-Z0-9]*)$
+    ConstraintDescription: Must start with a letter and contain only alphanumeric characters
 
   DatabasePassword:
-    Description: The Amazon RDS password.
+    Description: Aurora master password (default from Task1 is 'LabPassword123!')
     Type: String
     Default: LabPassword123!
+    NoEcho: true
+    MinLength: 8
+    ConstraintDescription: Must be at least 8 characters
 
-  EC2ServerInstanceType:
-    Description: Amazon EC2 Instance Type
-    Type: String
-    Default: t3.nano
-    AllowedValues:
-      - t3.nano
-      - t3.micro
-      - t3.small
-      
+  # Infrastructure Parameters - These come from Task2/Task3 Stack Outputs
   ALBDnsName:
-    Description: Application Load Balancer DNS e.g. abc-toto-1234567.eu-central-1.elb.amazonaws.com.
+    Description: |
+      Application Load Balancer DNS Name from Task3 Outputs.
+      Format: xxx-xxx-123456789.REGION.elb.amazonaws.com
+      IMPORTANT: Do NOT include http:// or trailing slash!
     Type: String
+    AllowedPattern: '^[a-zA-Z0-9\-]+\.[a-z]{2}-[a-z]+-[0-9]\.elb\.amazonaws\.com$'
+    ConstraintDescription: |
+      Must be a valid ALB DNS name format.
+      Example: abc-alb-123456789.eu-central-1.elb.amazonaws.com
 
   WPElasticFileSystemID:
-    Description: EFS File System ID e.g. fs-01234567890123a45.
+    Description: |
+      EFS File System ID from Task2 Outputs.
+      Format: fs-xxxxxxxxxxxxxxxxx (fs- followed by 17 hex characters)
     Type: String
+    AllowedPattern: '^fs-[a-f0-9]{17}$'
+    ConstraintDescription: |
+      Must be a valid EFS File System ID.
+      Example: fs-0a1b2c3d4e5f67890
+
+  EC2ServerInstanceType:
+    Description: Amazon EC2 Instance Type for WordPress servers
+    Type: String
+    Default: t3.small
+    AllowedValues:
+      - t3.micro
+      - t3.small
+      - t3.medium
 
 Resources:
+  # Security Group for WordPress EC2 instances
   WebTierSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Security group for web instances
-      GroupName: Wordpress Servers Security Group
+      GroupDescription: Security group for WordPress web instances
+      GroupName: !Sub '${StudentLabTrigram}-WordPress-Servers-SG'
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -95,10 +119,15 @@ Resources:
           SourceSecurityGroupId:
             Fn::ImportValue:
               !Sub '${StudentLabTrigram}-AppInstanceSecurityGroup-ID'
+          Description: Allow HTTP from ALB
       VpcId:
         Fn::ImportValue:
           !Sub '${StudentLabTrigram}-VPC-ID'
+      Tags:
+        - Key: Name
+          Value: !Sub '${StudentLabTrigram}-WordPress-Servers-SG'
 
+  # Allow WordPress instances to access EFS
   EFSSecurityGroupInboundRule:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -109,7 +138,9 @@ Resources:
       GroupId:
         Fn::ImportValue:
           !Sub '${StudentLabTrigram}-EFSMountTargetSecurityGroup-ID'
+      Description: Allow NFS from WordPress instances
 
+  # Allow WordPress instances to access Aurora RDS
   RDSSecurityGroupInboundRule:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -120,38 +151,126 @@ Resources:
       GroupId:
         Fn::ImportValue:
           !Sub '${StudentLabTrigram}-RDSSecurityGroup-ID'
+      Description: Allow MySQL from WordPress instances
 
-# Lab Launch Template
+  # Launch Template for WordPress EC2 instances
   LabLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: !Sub '${StudentLabTrigram}-LabLaunchTemplate'
+      LaunchTemplateName: !Sub '${StudentLabTrigram}-WordPress-LaunchTemplate'
       LaunchTemplateData:
         UserData:
           "Fn::Base64":
             !Sub
             - |
               #!/bin/bash -xe
-              DB_NAME=WPDatabase
-              DB_HOSTNAME=${DatabaseHostName}
+              # =============================================================================
+              # WordPress Installation Script with Enhanced Logging and Error Handling
+              # =============================================================================
+              # This script installs and configures WordPress on Amazon Linux 2
+              # All output is logged to /var/log/wordpress-install.log and system console
+              # =============================================================================
+              
+              # Redirect all output to log file and console for troubleshooting
+              exec > >(tee -a /var/log/wordpress-install.log)
+              exec 2>&1
+              
+              echo "========================================="
+              echo "WordPress Installation Started"
+              echo "Timestamp: $(date)"
+              echo "========================================="
+              
+              # =============================================================================
+              # CONFIGURATION VARIABLES
+              # =============================================================================
+              # Database Configuration (from Aurora RDS - Task1)
+              DB_NAME="WPDatabase"
+              DB_HOSTNAME="${DatabaseHostName}"
               DB_USERNAME="${DatabaseUsername}"
               DB_PASSWORD="${DatabasePassword}"
-              WP_ADMIN=wpadmin
-              WP_PASSWORD=wpadmin1234
-              WP_EMAIL=admin@live.fr
-              LB_HOSTNAME=${ALBDNSName}
-              yum update -y
-              yum install -y amazon-linux-extras
-              yum install -y awslogs httpd mysql gcc-c++
-              amazon-linux-extras enable php7.4
+              
+              # WordPress Admin Configuration (hardcoded for lab simplicity)
+              # NOTE: In production, these should be in Secrets Manager!
+              WP_ADMIN="wpadmin"
+              WP_PASSWORD="wpadmin1234"
+              WP_EMAIL="admin@example.com"
+              
+              # Infrastructure Configuration
+              LB_HOSTNAME="${ALBDNSName}"
+              EFS_ID="${ElasticFileSystem}"
+              
+              echo "Configuration loaded:"
+              echo "  - Database: $DB_NAME @ $DB_HOSTNAME"
+              echo "  - DB User: $DB_USERNAME"
+              echo "  - WordPress Admin: $WP_ADMIN"
+              echo "  - Load Balancer: $LB_HOSTNAME"
+              echo "  - EFS ID: $EFS_ID"
+              echo ""
+              
+              # =============================================================================
+              # STEP 1: System Updates and Package Installation
+              # =============================================================================
+              echo "[STEP 1/10] Updating system packages..."
+              yum update -y || { echo "ERROR: System update failed"; exit 1; }
+              
+              echo "[STEP 2/10] Installing required packages..."
+              yum install -y amazon-linux-extras awslogs httpd mysql gcc-c++ || { echo "ERROR: Package installation failed"; exit 1; }
+              
+              echo "[STEP 3/10] Enabling PHP 7.4..."
+              amazon-linux-extras enable php7.4 || { echo "ERROR: PHP enable failed"; exit 1; }
               yum clean metadata
-              yum install -y php php-{pear,cgi,common,curl,mbstring,gd,mysqlnd,gettext,bcmath,json,xml,fpm,intl,zip,imap,devel,opcache}
+              
+              echo "[STEP 4/10] Installing PHP and extensions..."
+              yum install -y php php-{pear,cgi,common,curl,mbstring,gd,mysqlnd,gettext,bcmath,json,xml,fpm,intl,zip,imap,devel,opcache} || { echo "ERROR: PHP installation failed"; exit 1; }
+              
+              # =============================================================================
+              # STEP 2: EFS Mount Configuration
+              # =============================================================================
+              echo "[STEP 5/10] Configuring EFS mount..."
+              
+              # Enable and start NFS client
               systemctl enable nfs-server.service
               systemctl start nfs-server.service
+              
+              # Create WordPress directory
               mkdir -p /var/www/wordpress
-              mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${ElasticFileSystem}.efs.${AWS::Region}.amazonaws.com:/ /var/www/wordpress
-
-              ## create site config
+              
+              # Mount EFS with retry logic
+              echo "Attempting to mount EFS: ${EFS_ID}.efs.${AWS::Region}.amazonaws.com"
+              MAX_RETRIES=5
+              RETRY_COUNT=0
+              
+              while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+                if mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${EFS_ID}.efs.${AWS::Region}.amazonaws.com:/ /var/www/wordpress; then
+                  echo "SUCCESS: EFS mounted successfully"
+                  break
+                else
+                  RETRY_COUNT=$((RETRY_COUNT+1))
+                  echo "WARNING: EFS mount attempt $RETRY_COUNT failed. Retrying in 10 seconds..."
+                  sleep 10
+                fi
+              done
+              
+              if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+                echo "ERROR: Failed to mount EFS after $MAX_RETRIES attempts"
+                echo "Please verify:"
+                echo "  1. EFS ID is correct: $EFS_ID"
+                echo "  2. EFS mount targets exist in both AZs"
+                echo "  3. Security group allows NFS (port 2049) from this instance"
+                exit 1
+              fi
+              
+              # Verify mount
+              if ! mountpoint -q /var/www/wordpress; then
+                echo "ERROR: EFS mount verification failed"
+                exit 1
+              fi
+              
+              # =============================================================================
+              # STEP 3: Apache Configuration
+              # =============================================================================
+              echo "[STEP 6/10] Configuring Apache web server..."
+              
               cat <<EOF >/etc/httpd/conf.d/wordpress.conf
               ServerName 127.0.0.1:80
               DocumentRoot /var/www/wordpress
@@ -162,63 +281,209 @@ Resources:
               </Directory>
               EOF
               
-              pecl install igbinary
-              cd /tmp
-
-              ## install WordPress and WP CLI
-              curl -o /bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+              echo "Apache configuration created"
+              
+              # =============================================================================
+              # STEP 4: WordPress Installation
+              # =============================================================================
+              echo "[STEP 7/10] Installing WordPress and WP-CLI..."
+              
+              # Install WP-CLI
+              curl -o /bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar || { echo "ERROR: WP-CLI download failed"; exit 1; }
               chmod +x /bin/wp
-              wget -P /tmp/ https://wordpress.org/latest.tar.gz
-              tar -vxzf latest.tar.gz -C /var/www/
-              cp /var/www/wordpress/wp-config-sample.php /var/www/wordpress/wp-config.php
+              
+              # Download WordPress
+              cd /tmp
+              wget -P /tmp/ https://wordpress.org/latest.tar.gz || { echo "ERROR: WordPress download failed"; exit 1; }
+              tar -xzf latest.tar.gz -C /var/www/
+              
+              # =============================================================================
+              # STEP 5: WordPress Configuration
+              # =============================================================================
+              echo "[STEP 8/10] Configuring WordPress..."
+              
+              # Only configure if wp-config.php doesn't exist (first instance)
+              if [ ! -f /var/www/wordpress/wp-config.php ]; then
+                echo "Creating wp-config.php..."
+                cp /var/www/wordpress/wp-config-sample.php /var/www/wordpress/wp-config.php
+                
+                cd /var/www/wordpress/
+                sed -i "s/database_name_here/$DB_NAME/" wp-config.php
+                sed -i "s/username_here/$DB_USERNAME/" wp-config.php
+                sed -i "s/password_here/$DB_PASSWORD/" wp-config.php
+                sed -i "s/localhost/$DB_HOSTNAME/" wp-config.php
+                
+                echo "wp-config.php created successfully"
+              else
+                echo "wp-config.php already exists (shared via EFS)"
+              fi
+              
+              # =============================================================================
+              # STEP 6: Database Connection Test
+              # =============================================================================
+              echo "[STEP 9/10] Testing database connection..."
+              
+              # Test MySQL connection
+              if mysql -h "$DB_HOSTNAME" -u "$DB_USERNAME" -p"$DB_PASSWORD" -e "SELECT 1;" > /dev/null 2>&1; then
+                echo "SUCCESS: Database connection successful"
+              else
+                echo "ERROR: Cannot connect to database"
+                echo "Please verify:"
+                echo "  1. Aurora endpoint is correct: $DB_HOSTNAME"
+                echo "  2. Username is correct: $DB_USERNAME"
+                echo "  3. Password is correct"
+                echo "  4. Security group allows MySQL (port 3306) from this instance"
+                echo "  5. Aurora cluster is in 'Available' state"
+                exit 1
+              fi
+              
+              # =============================================================================
+              # STEP 7: WordPress Core Installation
+              # =============================================================================
+              echo "[STEP 10/10] Installing WordPress core..."
+              
               cd /var/www/wordpress/
-              sed -i 's/database_name_here/'"$DB_NAME"'/' wp-config.php
-              sed -i 's/username_here/'"$DB_USERNAME"'/' wp-config.php
-              sed -i 's/password_here/'"$DB_PASSWORD"'/' wp-config.php
-              sed -i 's/localhost/'"$DB_HOSTNAME"'/' wp-config.php
-
-                # install WordPress if not installed
-                # use public alb host name if wp domain name was empty
-              if ! $(wp core is-installed --allow-root); then
-                  wp core install --url="http://$LB_HOSTNAME" --title='Wordpress on AWS' --admin_user="$WP_ADMIN" --admin_password="$WP_PASSWORD" --admin_email="$WP_EMAIL" --allow-root
+              
+              # Check if WordPress is already installed (by another instance)
+              if ! $(wp core is-installed --allow-root 2>/dev/null); then
+                echo "Installing WordPress for the first time..."
+                
+                if wp core install \
+                  --url="http://$LB_HOSTNAME" \
+                  --title='WordPress on AWS' \
+                  --admin_user="$WP_ADMIN" \
+                  --admin_password="$WP_PASSWORD" \
+                  --admin_email="$WP_EMAIL" \
+                  --allow-root; then
+                  
+                  echo "SUCCESS: WordPress core installed"
+                  
+                  # Install recommended plugin
+                  echo "Installing W3 Total Cache plugin..."
                   wp plugin install w3-total-cache --allow-root
+                  
+                  # Set proper permissions
                   chown -R apache:apache /var/www/wordpress
                   chmod u+wrx /var/www/wordpress/wp-content/*
+                  
+                  # Download opcache status page
                   if [ ! -f /var/www/wordpress/opcache-instanceid.php ]; then
                     wget -P /var/www/wordpress/ https://s3.amazonaws.com/aws-refarch/wordpress/latest/bits/opcache-instanceid.php
                   fi
-              fi
-              RESULT=$?
-              echo $RESULT
-              if [ $RESULT -eq 0 ]; then
+                  
+                  # Mark installation as successful
                   touch /var/www/wordpress/wordpress.initialized
-              else
+                  echo "WordPress installation completed successfully"
+                else
+                  echo "ERROR: WordPress installation failed"
                   touch /var/www/wordpress/wordpress.failed
+                  exit 1
+                fi
+              else
+                echo "WordPress already installed (shared via EFS)"
+                # Still set permissions for this instance
+                chown -R apache:apache /var/www/wordpress
               fi
-
-              ## install opcache
-              # create hidden opcache directory locally & change owner to apache
-
+              
+              # =============================================================================
+              # STEP 8: OpCache Configuration
+              # =============================================================================
+              echo "Configuring OpCache for performance..."
+              
               mkdir -p /var/www/.opcache
-              # enable opcache in /etc/php-7.0.d/10-opcache.ini
+              chown apache:apache /var/www/.opcache
+              
+              # Configure OpCache settings
               sed -i 's/;opcache.file_cache=.*/opcache.file_cache=\/var\/www\/.opcache/' /etc/php.d/10-opcache.ini
               sed -i 's/opcache.memory_consumption=.*/opcache.memory_consumption=512/' /etc/php.d/10-opcache.ini
-              # download opcache-instance.php to verify opcache status
+              
+              # Download opcache status page if not exists
               if [ ! -f /var/www/wordpress/opcache-instanceid.php ]; then
-                  wget -P /var/www/wordpress/ https://s3.amazonaws.com/aws-refarch/wordpress/latest/bits/opcache-instanceid.php
+                wget -P /var/www/wordpress/ https://s3.amazonaws.com/aws-refarch/wordpress/latest/bits/opcache-instanceid.php
               fi
-
+              
+              # =============================================================================
+              # STEP 9: Start Apache
+              # =============================================================================
+              echo "Starting Apache web server..."
               chkconfig httpd on
               service httpd start
+              
+              if systemctl is-active --quiet httpd; then
+                echo "SUCCESS: Apache is running"
+              else
+                echo "ERROR: Apache failed to start"
+                exit 1
+              fi
+              
+              # =============================================================================
+              # INSTALLATION COMPLETE
+              # =============================================================================
+              echo ""
+              echo "========================================="
+              echo "WordPress Installation Completed Successfully!"
+              echo "Timestamp: $(date)"
+              echo "========================================="
+              echo ""
+              echo "Access your WordPress site at: http://$LB_HOSTNAME"
+              echo "WordPress Admin URL: http://$LB_HOSTNAME/wp-admin"
+              echo "WordPress Admin Username: $WP_ADMIN"
+              echo "WordPress Admin Password: $WP_PASSWORD"
+              echo ""
+              echo "Troubleshooting:"
+              echo "  - View this log: /var/log/wordpress-install.log"
+              echo "  - View system log: EC2 Console > Actions > Monitor and troubleshoot > Get system log"
+              echo "  - Check Apache logs: /var/log/httpd/error_log"
+              echo "  - Check WordPress status: ls -la /var/www/wordpress/"
+              echo ""
+              echo "========================================="
+              
             - ElasticFileSystem: !Ref WPElasticFileSystemID
               ALBDNSName: !Ref ALBDnsName
+        
         ImageId: '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2}}'
         SecurityGroupIds:
           - !Ref WebTierSecurityGroup
         InstanceType: !Ref EC2ServerInstanceType
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Sub '${StudentLabTrigram}-WordPress-Instance'
+          - ResourceType: volume
+            Tags:
+              - Key: Name
+                Value: !Sub '${StudentLabTrigram}-WordPress-Volume'
 
 Outputs:
   WPLaunchTemplate:
-    Description: 'Launch Template for WordPress'
-    Value:
-      !Ref LabLaunchTemplate
+    Description: 'Launch Template ID for WordPress Auto Scaling Group'
+    Value: !Ref LabLaunchTemplate
+    Export:
+      Name: !Sub '${StudentLabTrigram}-WordPress-LaunchTemplate-ID'
+  
+  WPLaunchTemplateLatestVersion:
+    Description: 'Latest version of the Launch Template'
+    Value: !GetAtt LabLaunchTemplate.LatestVersionNumber
+  
+  WebTierSecurityGroupID:
+    Description: 'Security Group ID for WordPress instances'
+    Value: !Ref WebTierSecurityGroup
+    Export:
+      Name: !Sub '${StudentLabTrigram}-WebTierSecurityGroup-ID'
+  
+  WordPressAdminUsername:
+    Description: 'WordPress admin username (hardcoded for lab)'
+    Value: 'wpadmin'
+  
+  WordPressAdminPassword:
+    Description: 'WordPress admin password (hardcoded for lab)'
+    Value: 'wpadmin1234'
+  
+  WordPressAdminURL:
+    Description: 'WordPress admin login URL'
+    Value: !Sub 'http://${ALBDnsName}/wp-admin'
+  
+  TroubleshootingTips:
+    Description: 'How to troubleshoot if instances fail to launch'
+    Value: 'Check /var/log/wordpress-install.log or EC2 Console > Actions > Monitor and troubleshoot > Get system log'
