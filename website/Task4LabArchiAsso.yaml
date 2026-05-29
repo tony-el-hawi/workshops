@@ -236,12 +236,14 @@ Resources:
               mkdir -p /var/www/wordpress
               
               # Mount EFS with retry logic
-              echo "Attempting to mount EFS: ${EFS_ID}.efs.${AWS::Region}.amazonaws.com"
+              # NOTE: ${!EFS_ID} is a Fn::Sub escape — keeps EFS_ID as a literal bash variable.
+              # ${AWS::Region} stays unescaped so CloudFormation injects the deploy region.
+              echo "Attempting to mount EFS: ${!EFS_ID}.efs.${AWS::Region}.amazonaws.com"
               MAX_RETRIES=5
               RETRY_COUNT=0
               
               while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-                if mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${EFS_ID}.efs.${AWS::Region}.amazonaws.com:/ /var/www/wordpress; then
+                if mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 ${!EFS_ID}.efs.${AWS::Region}.amazonaws.com:/ /var/www/wordpress; then
                   echo "SUCCESS: EFS mounted successfully"
                   break
                 else
