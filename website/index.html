@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Atelier AWS — Construire une application WordPress hautement disponible dans un VPC. Guide pas à pas en français.">
+  <title>Atelier AWS — Build a Highly Available WordPress on AWS</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23232f3e'/%3E%3Ctext x='50' y='65' font-family='Inter,sans-serif' font-size='42' font-weight='700' text-anchor='middle' fill='%23ff9900'%3EWP%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+
+  <!-- ============ HEADER ============ -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">
+        <button class="menu-toggle" aria-label="Ouvrir le menu" title="Menu">☰</button>
+        <div class="brand-mark">WP</div>
+        <div class="brand-text">
+          <span class="brand-title">Build a Highly Available WordPress on AWS</span>
+          <span class="brand-sub">Architecting on AWS · Lab Guide v3.1 (FR)</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="progress-pill" title="Votre progression dans l'atelier">
+          <span class="progress-text">0/5 tâches</span>
+          <span class="progress-bar"><span class="progress-fill" style="width:0%"></span></span>
+        </div>
+        <button class="btn-reset" type="button" title="Réinitialiser la progression">Réinitialiser</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- ============ SIDE NAV ============ -->
+    <nav class="side-nav" aria-label="Sommaire de l'atelier">
+      <p class="nav-title">Atelier</p>
+      <ul class="nav-list">
+        <li><a href="#scenario"><span class="nav-num"><span>i</span></span> Scénario</a></li>
+        <li><a href="#objectifs"><span class="nav-num"><span>O</span></span> Objectifs</a></li>
+        <li><a href="#architecture"><span class="nav-num"><span>A</span></span> Architecture</a></li>
+        <li><a href="#pre-flight"><span class="nav-num"><span>P</span></span> Avant de commencer</a></li>
+      </ul>
+
+      <p class="nav-title">Tâches</p>
+      <ul class="nav-list">
+        <li><a href="#task-1" data-task="1"><span class="nav-num"><span>1</span></span> CloudFormation — VPC</a></li>
+        <li><a href="#task-2" data-task="2"><span class="nav-num"><span>2</span></span> Amazon EFS</a></li>
+        <li><a href="#task-3" data-task="3"><span class="nav-num"><span>3</span></span> Application Load Balancer</a></li>
+        <li><a href="#task-4" data-task="4"><span class="nav-num"><span>4</span></span> Launch Template</a></li>
+        <li><a href="#task-5" data-task="5"><span class="nav-num"><span>5</span></span> Auto Scaling Group</a></li>
+      </ul>
+
+      <p class="nav-title">Fin</p>
+      <ul class="nav-list">
+        <li><a href="#conclusion"><span class="nav-num"><span>★</span></span> Conclusion</a></li>
+      </ul>
+    </nav>
+
+    <!-- ============ MAIN ============ -->
+    <main class="main">
+
+      <!-- ============ HERO ============ -->
+      <section class="hero" id="top" aria-labelledby="hero-title">
+        <span class="hero-eyebrow">Architecting on AWS · Lab Guide v3.1</span>
+        <h1 id="hero-title">Build a Highly Available <span class="accent">WordPress</span> on AWS</h1>
+        <p class="hero-lead">
+          Déployez une infrastructure <em>WordPress</em> répartie sur plusieurs <em>Availability Zones</em>,
+          alimentée par <span class="aws-svc">Amazon Aurora</span>, <span class="aws-svc">Amazon EFS</span>,
+          un <span class="aws-svc">Application Load Balancer</span> et un <span class="aws-svc">Auto Scaling Group</span>.
+          Cette version <strong>"fast"</strong> va à l'essentiel — déroulez les sections détaillées si vous bloquez.
+        </p>
+        <div class="hero-meta">
+          <span class="hero-meta-item"><span class="icon">⏱</span> Durée estimée : 90 min</span>
+          <span class="hero-meta-item"><span class="icon">🎯</span> Niveau : Solutions Architect Associate</span>
+          <span class="hero-meta-item"><span class="icon">🇫🇷</span> Langue : Français</span>
+          <span class="hero-meta-item"><span class="icon">🧰</span> 5 tâches · 1 architecture HA</span>
+        </div>
+      </section>
+
+      <!-- ============ SCENARIO ============ -->
+      <section id="scenario" aria-labelledby="scenario-title">
+        <header class="section-header">
+          <p class="section-eyebrow">Mise en situation</p>
+          <h2 class="section-title" id="scenario-title">Scénario de l'atelier</h2>
+          <p class="section-lead">Le contexte client. Comprendre <em>pourquoi</em> on déploie cette architecture, avant le <em>comment</em>.</p>
+        </header>
+
+        <div class="card scenario-card">
+          <p>
+            <span class="company">BlueHaven Media</span>, une jeune entreprise dynamique spécialisée dans la création
+            de contenus numériques pour artistes indépendants, connaît une <strong>croissance fulgurante</strong>.
+            Leur site web <span class="aws-svc">WordPress</span> est au cœur de leur activité : portfolio, blog, et
+            surtout un <em>espace client</em> permettant aux artistes de gérer leur profil, publier leurs œuvres et
+            suivre leurs statistiques de visibilité.
+          </p>
+          <p>
+            Jusqu'à récemment, l'ensemble de leur infrastructure web reposait sur un <strong>serveur unique</strong> hébergé
+            dans un petit datacenter local. Mais avec l'augmentation du trafic, les temps de chargement se sont allongés
+            et les pannes sont devenues plus fréquentes. L'équipe technique a donc décidé de franchir un cap :
+            <strong>migrer leur plateforme vers AWS</strong> pour tirer parti de la scalabilité et de la résilience du cloud.
+          </p>
+          <p>
+            L'objectif est clair : déployer une architecture <span class="aws-svc">WordPress</span> hautement disponible,
+            répartie sur plusieurs <em>Availability Zones</em>, garantissant <strong>sécurité</strong>,
+            <strong>performance</strong> et <strong>tolérance aux pannes</strong>.
+          </p>
+          <p>
+            En tant que <strong>consultant onepoint</strong> (future SAA) mandaté pour ce projet, votre mission est de concevoir
+            et déployer cette nouvelle infrastructure :
+          </p>
+          <ul>
+            <li><strong>Hautement disponible</strong> pour éliminer les <em>single points of failure</em></li>
+            <li><strong>Élastique</strong> pour s'adapter à la charge</li>
+            <li><strong>Sécurisée</strong> au niveau réseau et applicatif</li>
+            <li><strong>Optimisée en coûts</strong> grâce aux services managés AWS</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ============ OBJECTIFS ============ -->
+      <section id="objectifs" aria-labelledby="obj-title">
+        <header class="section-header">
+          <p class="section-eyebrow">Ce que vous allez apprendre</p>
+          <h2 class="section-title" id="obj-title">Objectifs pédagogiques</h2>
+          <p class="section-lead">À l'issue de cet atelier, vous saurez orchestrer cinq services AWS pour servir une application web stateful.</p>
+        </header>
+
+        <ul class="objectives-list">
+          <li>
+            <span class="check">✓</span>
+            <span class="obj-text">Déployer un <span class="aws-svc">VPC</span> sur plusieurs <em>Availability Zones</em> à l'aide d'un template <span class="aws-svc">CloudFormation</span></span>
+          </li>
+          <li>
+            <span class="check">✓</span>
+            <span class="obj-text">Déployer une base de données relationnelle hautement disponible avec <span class="aws-svc">Amazon RDS</span> (<span class="aws-svc">Aurora</span>)</span>
+          </li>
+          <li>
+            <span class="check">✓</span>
+            <span class="obj-text">Utiliser <span class="aws-svc">Amazon EFS</span> pour fournir une couche de <em>shared storage</em> multi-AZ via <em>NFS</em></span>
+          </li>
+          <li>
+            <span class="check">✓</span>
+            <span class="obj-text">Déployer un <span class="aws-svc">Application Load Balancer</span> comme point d'entrée de l'application</span>
+          </li>
+          <li>
+            <span class="check">✓</span>
+            <span class="obj-text">Créer un <span class="aws-svc">Auto Scaling Group</span> qui s'adapte automatiquement aux variations de charge</span>
+          </li>
+        </ul>
+      </section>
+
+      <!-- ============ ARCHITECTURE ============ -->
+      <section id="architecture" aria-labelledby="arch-title">
+        <header class="section-header">
+          <p class="section-eyebrow">Vue d'ensemble</p>
+          <h2 class="section-title" id="arch-title">Architecture cible</h2>
+          <p class="section-lead">L'image ci-dessous montre l'architecture finale que vous allez construire au fil des cinq tâches.</p>
+        </header>
+
+        <figure class="architecture-frame">
+          <img src="images/image4.png" alt="Diagramme de l'architecture WordPress hautement disponible avec VPC multi-AZ, ALB, Auto Scaling, EFS et Aurora">
+          <figcaption class="caption">Architecture <em>highly available</em> — VPC multi-AZ avec <span class="aws-svc">ALB</span>, <span class="aws-svc">Auto Scaling Group</span>, <span class="aws-svc">EFS</span> et <span class="aws-svc">Aurora</span>.</figcaption>
+        </figure>
+      </section>
+
+      <!-- ============ PRE-FLIGHT ============ -->
+      <section id="pre-flight" aria-labelledby="pre-title">
+        <header class="section-header">
+          <p class="section-eyebrow">Préparation</p>
+          <h2 class="section-title" id="pre-title">Avant de commencer</h2>
+          <p class="section-lead">Quelques vérifications rapides pour que tout se passe bien.</p>
+        </header>
+
+        <div class="info-box info">
+          <span class="icon-bubble">i</span>
+          <div class="body">
+            <p><span class="label">Trigramme :</span> chaque ressource est préfixée par votre <code>${TRIGRAMME}</code> (3 lettres). Vous l'utiliserez à chaque tâche pour identifier vos ressources dans la console AWS.</p>
+            <p><span class="label">Région AWS :</span> placez-vous dans une seule région pour tout l'atelier (par exemple <code>eu-west-3</code> ou <code>eu-central-1</code>).</p>
+            <p><span class="label">Mode "fast" vs "détaillé" :</span> chaque tâche présente d'abord la version <strong>essentielle</strong>. Cliquez sur <em>« Afficher les instructions détaillées »</em> pour la version pas-à-pas avec captures.</p>
+          </div>
+        </div>
+
+        <div class="info-box tip">
+          <span class="icon-bubble">★</span>
+          <div class="body">
+            <p><span class="label">Astuce progression :</span> chaque tâche dispose d'un bouton <em>« Marquer comme terminée »</em>. Votre progression est sauvegardée localement (LocalStorage) — vous pouvez revenir plus tard sans la perdre.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 1 — CloudFormation VPC                                  -->
+      <!-- ============================================================ -->
+      <section id="task-1" aria-labelledby="task-1-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">1</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Tâche 1</p>
+              <h3 id="task-1-title">Examen et exécution d'un template <span class="aws-svc">CloudFormation</span> préconfiguré</h3>
+            </div>
+            <button class="complete-toggle" data-task="1" type="button" aria-label="Marquer la tâche 1 comme terminée">
+              <span class="check-icon">✓</span>
+              <span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Dans cette tâche, vous déployez les <strong>ressources réseau</strong> et <strong>base de données</strong> nécessaires
+              au bon fonctionnement de l'application : <span class="aws-svc">VPC</span> multi-AZ, sous-réseaux, <em>NAT gateways</em>,
+              <em>Internet Gateway</em>, <em>Security Groups</em> et un cluster <span class="aws-svc">Aurora</span>.
+            </p>
+
+            <div class="subscenario">
+              <p>
+                <span class="company">BlueHaven Media</span> souhaite déployer une nouvelle application <span class="aws-svc">WordPress</span>.
+                Votre <em>cloud engineer</em> a préparé un template <span class="aws-svc">CloudFormation</span> qui crée :
+              </p>
+              <p>
+                1× <span class="aws-svc">VPC</span> · 2× <em>public subnets</em> · 2× <em>app subnets</em> privés ·
+                2× <em>DB subnets</em> privés · 1× <em>Internet Gateway</em> · 2× <em>NAT Gateways</em> (avec <em>Elastic IPs</em>) ·
+                <em>Security Groups</em> et <em>Outputs</em> nécessaires aux déploiements suivants.
+              </p>
+            </div>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li>
+                Téléchargez puis examinez le template
+                <a href="Task1LabArchiAsso.yaml" download><code>Task1LabArchiAsso.yaml</code></a>
+                pour comprendre l'infrastructure déployée.
+              </li>
+              <li>
+                Créez la <em>stack</em> <span class="aws-svc">CloudFormation</span> en uploadant ce fichier, avec :
+                <ul class="nested">
+                  <li>Nom de la pile = <span class="copyable" data-copy="${TRIGRAMME}-LabVPCStack">${TRIGRAMME}-LabVPCStack</span></li>
+                </ul>
+              </li>
+              <li>
+                La création peut prendre <strong>une dizaine de minutes</strong>. Surveillez l'onglet <span class="ui">Events</span>
+                ainsi que le service <span class="aws-svc">Aurora and RDS</span> en parallèle.
+              </li>
+              <li>Affichez les ressources créées depuis la console.</li>
+              <li>
+                <strong>Notez bien les <span class="ui">Outputs</span> de la stack</strong> : certaines valeurs seront utilisées plus tard.
+              </li>
+            </ol>
+
+            <div class="info-box warning">
+              <span class="icon-bubble">!</span>
+              <div class="body">
+                <p><span class="label">Patience :</span> le déploiement peut atteindre <strong>15 minutes</strong>. Profitez-en pour relire le YAML pendant la création.</p>
+              </div>
+            </div>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Félicitations !</strong> Vous avez créé toutes les ressources réseau et base de données via <span class="aws-svc">CloudFormation</span>.</span>
+            </div>
+
+            <!-- DETAILED INSTRUCTIONS -->
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-1-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span>
+                    <span class="label-text">Afficher les instructions détaillées</span>
+                    <br><span class="hint">Pas-à-pas complet avec captures d'écran si vous bloquez</span>
+                  </span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+
+              <div class="expand-content" id="task-1-details" role="region" aria-label="Instructions détaillées de la tâche 1">
+
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 1.1 — Accès à la console <span class="aws-svc">CloudFormation</span></h4>
+                  <ol class="steps">
+                    <li>En haut de la <span class="ui">Console de gestion AWS</span>, dans la zone de recherche, recherchez et sélectionnez <span class="ui">CloudFormation</span>.</li>
+                  </ol>
+                </div>
+
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 1.2 — Récupération et examen du template</h4>
+                  <ol class="steps">
+                    <li>Téléchargez <a href="Task1LabArchiAsso.yaml" download><code>Task1LabArchiAsso.yaml</code></a> via clic droit → <em>Enregistrer le lien sous</em>.</li>
+                    <li>Ouvrez le fichier dans un <strong>éditeur de texte</strong> (<em>pas</em> dans un traitement de texte).</li>
+                    <li>Examinez le template <span class="aws-svc">CloudFormation</span>.</li>
+                    <li>Effectuez une prédiction sur les ressources créées par ce modèle.</li>
+                  </ol>
+                </div>
+
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 1.3 — Création de la stack <span class="aws-svc">CloudFormation</span></h4>
+                  <ol class="steps">
+                    <li>Sélectionnez <span class="ui">Créer une pile</span> &gt; <span class="ui">Avec de nouvelles ressources (standard)</span>.</li>
+                    <li>Configurez :
+                      <ul>
+                        <li>Sélectionnez <span class="ui">Charger un fichier de modèle</span></li>
+                        <li>Sélectionnez <span class="ui">Choisir un fichier</span></li>
+                        <li>Sélectionnez le fichier YAML sur votre machine</li>
+                        <li>Sélectionnez <span class="ui">Suivant</span></li>
+                      </ul>
+                    </li>
+                    <li>Pour <span class="ui">Nom de la pile</span>, saisissez <span class="copyable" data-copy="${TRIGRAMME}-LabVPCStack">${TRIGRAMME}-LabVPCStack</span>.</li>
+                    <li>Dans la section <span class="ui">Paramètres</span> : remplacez <code>x</code> par votre propre <em>trigramme</em>.</li>
+                    <li>Sélectionnez <span class="ui">Suivant</span>. La page <em>Configure stack options</em> s'affiche — conservez les valeurs par défaut, puis <span class="ui">Suivant</span>.</li>
+                    <li>En bas de la page <em>Review</em>, sélectionnez <span class="ui">Soumettre</span>. La pile passe à l'état <span class="status-pill in-progress">CREATE_IN_PROGRESS</span>.</li>
+                    <li>Cliquez sur l'onglet <span class="ui">Informations sur la pile</span>.</li>
+                    <li>Allez sur <span class="ui">Évènements</span> &gt; <span class="ui">Affichage du calendrier</span> pour visualiser la <em>timeline</em> du déploiement.</li>
+                  </ol>
+
+                  <figure class="step-figure">
+                    <img src="images/image17.png" alt="Affichage du calendrier des évènements CloudFormation pendant la création de la stack">
+                    <figcaption><em>Affichage du calendrier</em> des évènements <span class="aws-svc">CloudFormation</span> pendant le déploiement.</figcaption>
+                  </figure>
+
+                  <ol class="steps" start="9">
+                    <li>Attendez que le statut passe à <span class="status-pill complete">CREATE_COMPLETE</span>.</li>
+                  </ol>
+
+                  <div class="info-box info">
+                    <span class="icon-bubble">i</span>
+                    <div class="body">
+                      <p><span class="label">Remarque :</span> le déploiement peut prendre jusqu'à <strong>15 minutes</strong>.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 1.4 — Affichage des ressources créées</h4>
+                  <ol class="steps">
+                    <li>Sélectionnez l'onglet <span class="ui">Ressources</span>. La liste affiche les ressources qui sont en cours de création. <span class="aws-svc">CloudFormation</span> détermine l'ordre optimal — par exemple le <span class="aws-svc">VPC</span> avant ses sous-réseaux.</li>
+                    <li>Examinez les ressources qui ont été déployées dans la pile.</li>
+                    <li>Cliquez sur l'onglet <span class="ui">Événements</span> et faites défiler la liste. La liste affiche (dans l'ordre inverse) les activités effectuées par <span class="aws-svc">CloudFormation</span>. Toutes les erreurs rencontrées y sont répertoriées.</li>
+                    <li>Cliquez sur l'onglet <span class="ui">Sorties (Outputs)</span>.</li>
+                    <li>Examinez les paires clé-valeur dans la section <span class="ui">Outputs</span>. <strong><u>Ces valeurs seront utiles dans les prochaines tâches.</u></strong></li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+
+      <!-- ============================================================ -->
+      <!-- TASK 2 — Amazon EFS                                          -->
+      <!-- ============================================================ -->
+      <section id="task-2" aria-labelledby="task-2-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">2</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Tâche 2</p>
+              <h3 id="task-2-title">Création d'un système de fichiers <span class="aws-svc">Amazon EFS</span></h3>
+            </div>
+            <button class="complete-toggle" data-task="2" type="button" aria-label="Marquer la tâche 2 comme terminée">
+              <span class="check-icon">✓</span>
+              <span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Vous créez et configurez un <strong>système de fichiers</strong> <span class="aws-svc">Amazon EFS</span>
+              <em>regional</em>. Il fournira une <strong>couche de stockage partagée</strong> entre toutes les instances
+              <span class="aws-svc">EC2</span> de l'<span class="aws-svc">Auto Scaling Group</span>, sur les deux <em>Availability Zones</em>.
+            </p>
+
+            <div class="subscenario">
+              <p>
+                <span class="company">BlueHaven Media</span> a besoin d'une solution de stockage <em>cloud-native</em>,
+                conforme à ses politiques de sauvegarde et de chiffrement, sans avoir à provisionner ni gérer de matériel.
+                Vous recommandez <span class="aws-svc">Amazon EFS</span> : <em>elastic</em>, <em>set-and-forget</em>,
+                <em>simple</em> et <em>serverless</em>.
+              </p>
+            </div>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li>Créez un <strong>système de fichiers EFS régional</strong>.</li>
+              <li>Copiez l'<strong>ID du système de fichiers</strong> (utilisé plus tard).</li>
+            </ol>
+
+            <div class="info-box warning">
+              <span class="icon-bubble">!</span>
+              <div class="body">
+                <p><span class="label">Sécurité réseau :</span> les <em>mount targets</em> doivent être placés dans les <strong>app subnets privés</strong> (pas dans les sous-réseaux DB ni publics) avec le <em>Security Group</em> <span class="aws-svc">EFSMountTargetSecurityGroup</span>.</p>
+              </div>
+            </div>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Félicitations !</strong> Vous avez créé le système de fichiers <span class="aws-svc">Amazon EFS</span>.</span>
+            </div>
+
+            <!-- DETAILED INSTRUCTIONS -->
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-2-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span>
+                    <span class="label-text">Afficher les instructions détaillées</span>
+                    <br><span class="hint">Pas-à-pas complet</span>
+                  </span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+
+              <div class="expand-content" id="task-2-details" role="region" aria-label="Instructions détaillées de la tâche 2">
+
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 2.1 — Accès à la console <span class="aws-svc">Amazon EFS</span></h4>
+                  <ol class="steps">
+                    <li>En haut de la <span class="ui">Console de gestion AWS</span>, recherchez et sélectionnez <span class="ui">EFS</span>. La page <em>Amazon Elastic File System console</em> s'affiche.</li>
+                  </ol>
+                </div>
+
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 2.2 — Création d'un nouveau système de fichiers</h4>
+                  <ol class="steps">
+                    <li>Sélectionnez <span class="ui">Créer un système de fichiers</span>.</li>
+                    <li>Sélectionnez <span class="ui">Personnaliser</span>. La page <em>Paramètres du système de fichiers</em> s'affiche.</li>
+                    <li>Dans la section <span class="ui">Général</span>, configurez :
+                      <ul>
+                        <li><strong>Name</strong> — saisissez <span class="copyable" data-copy="${TRIGRAMME}-EFS">${TRIGRAMME}-EFS</span></li>
+                        <li><strong>Désélectionnez</strong> <em>Activer les sauvegardes automatiques</em></li>
+                        <li><strong>Désélectionnez</strong> <em>Activer le chiffrement des données au repos</em></li>
+                        <li>Section <span class="ui">Balises</span> : <em>Clé</em> = <code>Name</code>, <em>Valeur</em> = <span class="copyable" data-copy="${TRIGRAMME}-EFS">${TRIGRAMME}-EFS</span></li>
+                        <li>Conservez les valeurs par défaut pour les autres paramètres.</li>
+                      </ul>
+                    </li>
+                    <li>Sélectionnez <span class="ui">Suivant</span>. La page <em>Accès réseau</em> s'affiche.</li>
+                    <li>Dans <span class="ui">Virtual Private Cloud (VPC)</span>, sélectionnez votre VPC créé en Tâche 1 : <code>${TRIGRAMME}-LabVPC</code>.</li>
+                    <li>Pour <span class="ui">Cibles de montage</span>, configurez :
+                      <ul>
+                        <li><em>Zone de disponibilité</em> : sélectionnez celle se terminant par <strong>« a »</strong></li>
+                        <li><em>ID du sous-réseau</em> : <code>${TRIGRAMME}-AppSubnet-1</code></li>
+                        <li><em>Groupes de sécurité</em> : <code>${TRIGRAMME}-EFSMountTargetSecurityGroup</code></li>
+                        <li>Supprimez le <em>Security Group</em> par défaut en cliquant sur le <strong>X</strong>.</li>
+                      </ul>
+                    </li>
+                    <li>Pour <strong>l'autre cible de montage</strong> :
+                      <ul>
+                        <li><em>Zone de disponibilité</em> : celle se terminant par <strong>« b »</strong></li>
+                        <li><em>ID du sous-réseau</em> : <code>${TRIGRAMME}-AppSubnet-2</code></li>
+                        <li><em>Groupes de sécurité</em> : <code>${TRIGRAMME}-EFSMountTargetSecurityGroup</code></li>
+                        <li>Supprimez à nouveau le <em>Security Group</em> par défaut.</li>
+                      </ul>
+                    </li>
+                    <li>Sélectionnez <span class="ui">Suivant</span>. La page <em>File system policy – optional</em> s'affiche.
+                      <div class="info-box info" style="margin-top:10px">
+                        <span class="icon-bubble">i</span>
+                        <div class="body"><p><span class="label">Remarque :</span> la configuration de cette page n'est pas nécessaire dans cet atelier.</p></div>
+                      </div>
+                    </li>
+                    <li>Sélectionnez <span class="ui">Suivant</span>, puis tout en bas, choisissez <span class="ui">Créer</span>.</li>
+                  </ol>
+
+                  <div class="info-box success">
+                    <span class="icon-bubble">✓</span>
+                    <div class="body"><p><span class="label">Succès !</span> Le message <em>« Le système de fichiers (fs-xxxxxxx) est disponible »</em> s'affiche en haut de l'écran. L'état passera à <strong>Disponible</strong> après quelques minutes.</p></div>
+                  </div>
+                </div>
+
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 2.3 — Copie des métadonnées <span class="aws-svc">Amazon EFS</span></h4>
+                  <ol class="steps">
+                    <li>Dans le volet de navigation de gauche, sélectionnez <span class="ui">Systèmes de fichiers</span>.</li>
+                    <li>Copiez l'<strong>ID</strong> du système de fichiers <code>${TRIGRAMME}-EFS</code> dans un éditeur de texte. Format attendu : <code>fs-096b5fda40acbbc96</code>.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 3 — Application Load Balancer                           -->
+      <!-- ============================================================ -->
+      <section id="task-3" aria-labelledby="task-3-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">3</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Tâche 3</p>
+              <h3 id="task-3-title">Création d'un <span class="aws-svc">Application Load Balancer</span></h3>
+            </div>
+            <button class="complete-toggle" data-task="3" type="button" aria-label="Marquer la tâche 3 comme terminée">
+              <span class="check-icon">✓</span>
+              <span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Vous créez l'<span class="aws-svc">Application Load Balancer</span> (couche 7) et le <em>Target Group</em> qui
+              recevra les instances <span class="aws-svc">EC2</span> servant <span class="aws-svc">WordPress</span>.
+            </p>
+
+            <div class="subscenario">
+              <p>
+                L'application actuelle de <span class="company">BlueHaven Media</span> connaît des pannes liées à des charges
+                inattendues. Un <span class="aws-svc">Application Load Balancer</span> (Layer 7) résoudra cela en répartissant
+                le trafic sur les serveurs d'application des sous-réseaux privés. Vous le déployez avec une <em>health check</em>
+                ciblée et l'enregistrement des cibles requises.
+              </p>
+            </div>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li>Créez le <strong>Target Group</strong> avec <em>health check path</em> = <code>/wp-login.php</code>.</li>
+              <li>Créez l'<span class="aws-svc">Application Load Balancer</span>.</li>
+              <li>Copiez le <strong>DNS name</strong> de l'<span class="aws-svc">ALB</span> (utilisé plus tard).</li>
+            </ol>
+
+            <div class="info-box tip">
+              <span class="icon-bubble">★</span>
+              <div class="body">
+                <p><span class="label">Astuce health check :</span> <code>/wp-login.php</code> répond <code>200 OK</code> sans authentification — c'est un excellent endpoint pour vérifier qu'<em>Apache + PHP + WordPress</em> tournent réellement.</p>
+              </div>
+            </div>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Félicitations !</strong> Vous avez créé le <em>Target Group</em> et l'<span class="aws-svc">Application Load Balancer</span>.</span>
+            </div>
+
+            <!-- DETAILED INSTRUCTIONS -->
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-3-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span>
+                    <span class="label-text">Afficher les instructions détaillées</span>
+                    <br><span class="hint">Pas-à-pas complet</span>
+                  </span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+
+              <div class="expand-content" id="task-3-details" role="region" aria-label="Instructions détaillées de la tâche 3">
+
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 3.1 — Accès à la console <span class="aws-svc">Amazon EC2</span></h4>
+                  <ol class="steps">
+                    <li>En haut de la <span class="ui">Console de gestion AWS</span>, recherchez et sélectionnez <span class="ui">EC2</span>.</li>
+                  </ol>
+                </div>
+
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 3.2 — Création d'un <em>Target Group</em></h4>
+                  <ol class="steps">
+                    <li>Dans le volet de navigation gauche, section <span class="ui">Équilibrage de charge</span>, sélectionnez <span class="ui">Groupes cibles</span>.</li>
+                    <li>Sélectionnez <span class="ui">Créer un groupe cible</span>.</li>
+                    <li>Dans <span class="ui">Configuration de base</span> :
+                      <ul>
+                        <li><em>Choisir un type de cible</em> : <strong>Instances</strong></li>
+                        <li><em>Nom du groupe cible</em> : <span class="copyable" data-copy="${TRIGRAMME}-myWPTargetGroup">${TRIGRAMME}-myWPTargetGroup</span></li>
+                        <li><em>VPC</em> : <code>${TRIGRAMME}-LabVPC</code></li>
+                      </ul>
+                    </li>
+                    <li>Dans <span class="ui">Vérifications de l'état</span> :
+                      <ul>
+                        <li><em>Chemin de vérification</em> : <span class="copyable" data-copy="/wp-login.php">/wp-login.php</span></li>
+                        <li>Développez ▶ <em>Paramètres avancés de vérification</em> et conservez les valeurs par défaut pour les autres paramètres.</li>
+                      </ul>
+                    </li>
+                    <li>Sélectionnez <span class="ui">Suivant</span>. La page <em>Enregistrer les cibles</em> s'affiche — il n'y a aucune cible à enregistrer pour l'instant.</li>
+                    <li>Tout en bas, choisissez <span class="ui">Suivant</span> puis <span class="ui">Créer un groupe cible</span>.</li>
+                  </ol>
+
+                  <div class="info-box success">
+                    <span class="icon-bubble">✓</span>
+                    <div class="body"><p>Le message <em>« Groupe cible <code>${TRIGRAMME}-myWPTargetGroup</code> créé avec succès »</em> s'affiche.</p></div>
+                  </div>
+                </div>
+
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 3.3 — Création de l'<span class="aws-svc">Application Load Balancer</span></h4>
+                  <ol class="steps">
+                    <li>Dans le volet de navigation gauche, cliquez sur <span class="ui">Équilibreurs de charge</span>.</li>
+                    <li>Sélectionnez <span class="ui">Créer un équilibreur de charge</span>.</li>
+                    <li>Dans <span class="ui">Types d'équilibreurs de charge</span>, sous <span class="aws-svc">Application Load Balancer</span>, choisissez <span class="ui">Créer</span>.</li>
+                    <li>Dans <span class="ui">Configuration de base</span> :
+                      <ul>
+                        <li><em>Nom de l'équilibreur de charge</em> : <span class="copyable" data-copy="${TRIGRAMME}-myWPAppALB">${TRIGRAMME}-myWPAppALB</span></li>
+                      </ul>
+                    </li>
+                    <li>Dans <span class="ui">Mappage réseau</span> :
+                      <ul>
+                        <li><em>VPC</em> : <code>${TRIGRAMME}-LabVPC</code></li>
+                        <li><em>Mappages</em> :
+                          <ul>
+                            <li>☑ première AZ → <code>${TRIGRAMME}-PublicSubnet-1</code></li>
+                            <li>☑ deuxième AZ → <code>${TRIGRAMME}-PublicSubnet-2</code></li>
+                          </ul>
+                        </li>
+                      </ul>
+                    </li>
+                    <li>Dans <span class="ui">Groupes de sécurité</span> :
+                      <ul>
+                        <li>Sélectionnez <code>${TRIGRAMME}-AppInstanceSecurityGroup</code></li>
+                        <li>Supprimez le <em>Security Group</em> par défaut en cliquant sur le <strong>X</strong>.</li>
+                      </ul>
+                    </li>
+                    <li>Dans <span class="ui">Écouteurs et routage</span> :
+                      <ul>
+                        <li>Pour <em>Listener HTTP:80</em>, action par défaut → <code>${TRIGRAMME}-myWPTargetGroup</code></li>
+                      </ul>
+                    </li>
+                    <li>Tout en bas, sélectionnez <span class="ui">Créer un équilibreur de charge</span>.</li>
+                  </ol>
+
+                  <div class="info-box success">
+                    <span class="icon-bubble">✓</span>
+                    <div class="body"><p>Le message <em>« Création de l'équilibreur de charge réussie : <code>${TRIGRAMME}-myWPAppALB</code> »</em> s'affiche.</p></div>
+                  </div>
+
+                  <ol class="steps" start="9">
+                    <li>L'état est <span class="status-pill in-progress">Mise en service</span> pendant quelques minutes, puis passe à <span class="status-pill complete">Actif</span>.</li>
+                  </ol>
+
+                  <figure class="step-figure">
+                    <img src="images/image18.png" alt="État de l'Application Load Balancer dans la console EC2">
+                    <figcaption>Vérification de l'état de l'<span class="aws-svc">ALB</span> dans la console.</figcaption>
+                  </figure>
+                  <figure class="step-figure">
+                    <img src="images/image19.png" alt="DNS name de l'Application Load Balancer">
+                    <figcaption>Le <em>DNS name</em> de l'<span class="aws-svc">ALB</span> est visible dans l'onglet <span class="ui">Détails</span>.</figcaption>
+                  </figure>
+
+                  <ol class="steps" start="10">
+                    <li>Copiez le <strong>Nom DNS</strong> de l'<span class="aws-svc">ALB</span> dans un éditeur de texte. Format attendu :
+                      <div class="params" style="margin-top:10px"><div class="params-row"><div class="key">DNS Name</div><div class="val"><code>aaa-myWPAppALB-2024107451.eu-west-3.elb.amazonaws.com</code></div></div></div>
+                    </li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 4 — Launch Template via CloudFormation                  -->
+      <!-- ============================================================ -->
+      <section id="task-4" aria-labelledby="task-4-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">4</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Tâche 4</p>
+              <h3 id="task-4-title">Création d'un <em>Launch Template</em> via <span class="aws-svc">CloudFormation</span></h3>
+            </div>
+            <button class="complete-toggle" data-task="4" type="button" aria-label="Marquer la tâche 4 comme terminée">
+              <span class="check-icon">✓</span>
+              <span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Vous utilisez un second template <span class="aws-svc">CloudFormation</span> pour déployer le <em>user data</em>
+              <span class="aws-svc">WordPress</span> dans un <em>Launch Template</em> <span class="aws-svc">EC2</span>.
+              Le template inclut le montage <span class="aws-svc">EFS</span> et la configuration <span class="aws-svc">Aurora</span>.
+            </p>
+
+            <div class="subscenario">
+              <p>
+                À ce stade, vous avez créé les ressources réseau, la base de données, <span class="aws-svc">Amazon EFS</span>,
+                et un <span class="aws-svc">Application Load Balancer</span>. Il est temps de <strong>tout assembler</strong>.
+                Examinez le template, créez la stack, vérifiez les erreurs et corrigez-les si nécessaire.
+              </p>
+            </div>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li>Récupérez et examinez le 2<sup>e</sup> template <a href="Task4LabArchiAsso.yaml" download><code>Task4LabArchiAsso.yaml</code></a>.</li>
+              <li>Créez la stack <span class="aws-svc">CloudFormation</span> en renseignant les bons paramètres.</li>
+              <li>Affichez les ressources créées depuis la console.</li>
+            </ol>
+
+            <p class="subtasks-title" style="margin-top:24px">Paramètres à renseigner</p>
+            <div class="params">
+              <div class="params-row">
+                <div class="key">Trigramme</div>
+                <div class="val">Votre <code>${TRIGRAMME}</code> à 3 lettres (utilisé pour préfixer toutes les ressources créées).</div>
+              </div>
+              <div class="params-row">
+                <div class="key">EFS File System ID</div>
+                <div class="val">L'<strong>ID</strong> récupéré en Tâche 2 — format <code>fs-096b5fda40acbbc96</code>.</div>
+              </div>
+              <div class="params-row">
+                <div class="key">DatabaseHostName</div>
+                <div class="val"><em>Cluster endpoint</em> <span class="aws-svc">Aurora</span> issu des <span class="ui">Outputs</span> de la stack Tâche 1.</div>
+              </div>
+              <div class="params-row">
+                <div class="key">DatabaseUserName / Password</div>
+                <div class="val"><code>admin</code> / <code>LabPassword123!</code> (paramètres de la stack Tâche 1).</div>
+              </div>
+              <div class="params-row">
+                <div class="key">ALB DNS Name</div>
+                <div class="val">DNS de l'<span class="aws-svc">ALB</span> récupéré en Tâche 3.</div>
+              </div>
+            </div>
+
+            <div class="info-box warning">
+              <span class="icon-bubble">!</span>
+              <div class="body">
+                <p><span class="label">Attention au <em>user data</em> :</span> accordez-y une attention particulière. C'est ce script qui installe <em>Apache</em>, <em>PHP</em>, monte <span class="aws-svc">EFS</span> et configure <span class="aws-svc">WordPress</span> contre <span class="aws-svc">Aurora</span>. En cas d'échec, consultez <code>/var/log/wordpress-install.log</code> sur l'instance.</p>
+              </div>
+            </div>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Félicitations !</strong> Vous avez créé la pile à l'aide du template <span class="aws-svc">CloudFormation</span> fourni.</span>
+            </div>
+
+            <!-- DETAILED INSTRUCTIONS -->
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-4-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span>
+                    <span class="label-text">Afficher les instructions détaillées</span>
+                    <br><span class="hint">Pas-à-pas complet</span>
+                  </span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+
+              <div class="expand-content" id="task-4-details" role="region" aria-label="Instructions détaillées de la tâche 4">
+
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 4.1 — Accès à la console <span class="aws-svc">CloudFormation</span></h4>
+                  <ol class="steps">
+                    <li>En haut de la <span class="ui">Console de gestion AWS</span>, recherchez et sélectionnez <span class="ui">CloudFormation</span>.</li>
+                  </ol>
+                </div>
+
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 4.2 — Récupération et examen du template</h4>
+                  <ol class="steps">
+                    <li>Téléchargez <a href="Task4LabArchiAsso.yaml" download><code>Task4LabArchiAsso.yaml</code></a> via clic droit → <em>Enregistrer le lien sous</em>.</li>
+                    <li>Ouvrez le fichier dans un <strong>éditeur de texte</strong> (<em>pas</em> dans un traitement de texte).</li>
+                    <li>Examinez le template <span class="aws-svc">CloudFormation</span>.</li>
+                    <li>Effectuez une prédiction sur les ressources créées.</li>
+                  </ol>
+                </div>
+
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 4.3 — Création de la stack <span class="aws-svc">CloudFormation</span></h4>
+                  <ol class="steps">
+                    <li>Sélectionnez <span class="ui">Créer une pile</span> &gt; <span class="ui">Avec de nouvelles ressources (standard)</span>.</li>
+                    <li>Configurez :
+                      <ul>
+                        <li>Sélectionnez <span class="ui">Charger un fichier de modèle</span></li>
+                        <li>Sélectionnez <span class="ui">Choisir un fichier</span></li>
+                        <li>Sélectionnez le fichier YAML sur votre machine</li>
+                        <li>Sélectionnez <span class="ui">Suivant</span></li>
+                      </ul>
+                    </li>
+                    <li>Définissez le <span class="ui">Nom de la pile</span> sur <span class="copyable" data-copy="${TRIGRAMME}-WPLaunchConfigStack">${TRIGRAMME}-WPLaunchConfigStack</span>.</li>
+                    <li>Configurez les paramètres demandés (cf. tableau ci-dessus).</li>
+                    <li>Sélectionnez <span class="ui">Suivant</span>. La page <em>Configure stack options</em> s'affiche — conservez les valeurs par défaut.</li>
+                    <li>Sélectionnez <span class="ui">Suivant</span>. La page <em>Review WPLaunchConfigStack</em> s'affiche.</li>
+                    <li>Tout en bas, sélectionnez <span class="ui">Soumettre</span>. La pile passe à <span class="status-pill in-progress">CREATE_IN_PROGRESS</span>.</li>
+                    <li>Cliquez sur l'onglet <span class="ui">Informations sur la pile</span>.</li>
+                    <li>Cliquez éventuellement sur le bouton d'actualisation.</li>
+                    <li>Attendez <span class="status-pill complete">CREATE_COMPLETE</span>.</li>
+                  </ol>
+
+                  <div class="info-box info">
+                    <span class="icon-bubble">i</span>
+                    <div class="body"><p><span class="label">Remarque :</span> le déploiement peut prendre quelques minutes.</p></div>
+                  </div>
+                </div>
+
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 4.4 — Affichage des ressources créées</h4>
+                  <ol class="steps">
+                    <li>Sélectionnez l'onglet <span class="ui">Ressources</span>. La liste affiche les ressources créées (notamment le <em>Launch Template</em>).</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 5 — Auto Scaling Group                                  -->
+      <!-- ============================================================ -->
+      <section id="task-5" aria-labelledby="task-5-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">5</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Tâche 5</p>
+              <h3 id="task-5-title">Création d'un <span class="aws-svc">Auto Scaling Group</span> et test de l'application</h3>
+            </div>
+            <button class="complete-toggle" data-task="5" type="button" aria-label="Marquer la tâche 5 comme terminée">
+              <span class="check-icon">✓</span>
+              <span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Dernière étape : créer les <strong>serveurs d'application</strong> <span class="aws-svc">WordPress</span>
+              au moyen d'un <span class="aws-svc">Auto Scaling Group</span> et d'une <em>scaling policy</em>. Vous validez ensuite
+              la santé des cibles, puis vous connectez à l'application via le <span class="aws-svc">Load Balancer</span>.
+            </p>
+
+            <div class="subscenario">
+              <p>
+                Le <em>Launch Template</em> est en place. Créez maintenant un <span class="aws-svc">Auto Scaling Group</span>
+                et la <em>scaling policy</em> associée. Vérifiez la santé des instances et testez la disponibilité du
+                <em>Load Balancer</em>. Une fois l'équipe satisfaite, migrez le site <span class="aws-svc">WordPress</span>
+                vers l'environnement AWS et testez le fonctionnement.
+              </p>
+            </div>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li>Créez un <span class="aws-svc">Auto Scaling Group</span>.</li>
+              <li>Vérifiez les <em>Target Groups</em> et testez le serveur d'application via l'<span class="aws-svc">ALB</span>.</li>
+              <li>Connectez-vous à <span class="aws-svc">WordPress</span> et explorez.</li>
+            </ol>
+
+            <p class="subtasks-title" style="margin-top:24px">Capacités à configurer</p>
+            <div class="params">
+              <div class="params-row">
+                <div class="key">Capacité souhaitée</div>
+                <div class="val"><code>2</code></div>
+              </div>
+              <div class="params-row">
+                <div class="key">Capacité minimale</div>
+                <div class="val"><code>2</code></div>
+              </div>
+              <div class="params-row">
+                <div class="key">Capacité maximale</div>
+                <div class="val"><code>3</code></div>
+              </div>
+            </div>
+
+            <div class="info-box tip">
+              <span class="icon-bubble">★</span>
+              <div class="body">
+                <p><span class="label">Astuce d'identification :</span> ajoutez la balise <code>Name = ${TRIGRAMME}-wp-app</code> sur l'<span class="aws-svc">ASG</span>. <em>Très important</em> pour repérer vos <span class="aws-svc">EC2</span> dans la console plus tard.</p>
+              </div>
+            </div>
+
+            <div class="info-box warning">
+              <span class="icon-bubble">!</span>
+              <div class="body">
+                <p><span class="label">Accédez en <code>http</code></span> (et non <code>https</code>) — l'<span class="aws-svc">ALB</span> de cet atelier n'expose pas de <em>listener TLS</em>.</p>
+              </div>
+            </div>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Félicitations !</strong> Vous avez créé l'<span class="aws-svc">Auto Scaling Group</span> et lancé avec succès l'application <span class="aws-svc">WordPress</span>.</span>
+            </div>
+
+            <!-- DETAILED INSTRUCTIONS -->
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-5-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span>
+                    <span class="label-text">Afficher les instructions détaillées</span>
+                    <br><span class="hint">Pas-à-pas complet</span>
+                  </span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+
+              <div class="expand-content" id="task-5-details" role="region" aria-label="Instructions détaillées de la tâche 5">
+
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 5.1 — Création d'un <span class="aws-svc">Auto Scaling Group</span></h4>
+                  <ol class="steps">
+                    <li>En haut de la <span class="ui">Console de gestion AWS</span>, recherchez et sélectionnez <span class="ui">EC2</span>.</li>
+                    <li>Dans le volet de navigation gauche, sous <span class="ui">Auto Scaling</span>, choisissez <span class="ui">Groupes Auto Scaling</span>, puis <span class="ui">Créer un groupe Auto Scaling</span>.</li>
+                    <li>Configurez :
+                      <ul>
+                        <li><em>Nom</em> : <span class="copyable" data-copy="${TRIGRAMME}-WP-ASG">${TRIGRAMME}-WP-ASG</span></li>
+                        <li><em>Modèle de lancement</em> : sélectionnez celui créé en Tâche 4 → <code>${TRIGRAMME}-LabLaunchTemplate</code></li>
+                      </ul>
+                    </li>
+                    <li>Sélectionnez <span class="ui">Suivant</span>. La page <em>Choisir les options de lancement d'instance</em> s'affiche.</li>
+                    <li>Dans <span class="ui">Réseau</span> :
+                      <ul>
+                        <li><em>VPC</em> : <code>${TRIGRAMME}-LabVPC</code></li>
+                        <li><em>Sous-réseaux</em> : <code>${TRIGRAMME}-AppSubnet-1</code> + <code>${TRIGRAMME}-AppSubnet-2</code></li>
+                      </ul>
+                    </li>
+                    <li>Sélectionnez <span class="ui">Suivant</span>.</li>
+                    <li>Sur la page suivante :
+                      <ul>
+                        <li>Sélectionnez <strong>Attacher à un équilibreur de charge existant</strong></li>
+                        <li>Sélectionnez <strong>Choisir parmi les groupes cibles de votre équilibreur de charge</strong></li>
+                        <li>Liste déroulante <em>Groupes cibles existants</em> : <code>${TRIGRAMME}-myWPTargetGroup</code> | HTTP</li>
+                        <li><em>Autres types de surveillance</em> : ☑ <strong>Activer les surveillances de l'état <span class="aws-svc">Elastic Load Balancing</span></strong></li>
+                        <li><em>Période de grâce</em> : laissez la valeur par défaut <code>300</code> ou plus</li>
+                      </ul>
+                    </li>
+                    <li>Sélectionnez <span class="ui">Suivant</span>.</li>
+                    <li>Dans <span class="ui">Taille du groupe</span> : <em>Souhaitée</em> = <code>2</code>, <em>Minimale</em> = <code>2</code>, <em>Maximale</em> = <code>3</code>. Conservez les autres valeurs par défaut.</li>
+                    <li>Sélectionnez <span class="ui">Suivant</span>.</li>
+                    <li>Sélectionnez à nouveau <span class="ui">Suivant</span>. La page <em>Ajouter des identifications</em> s'affiche.</li>
+                    <li>Cliquez sur <span class="ui">Ajouter une balise</span> :
+                      <ul>
+                        <li><em>Clé</em> : <code>Name</code></li>
+                        <li><em>Valeur</em> : <span class="copyable" data-copy="${TRIGRAMME}-wp-app">${TRIGRAMME}-wp-app</span></li>
+                        <li><em><strong>Très important</strong> pour identifier vos EC2 dans la console !</em></li>
+                      </ul>
+                    </li>
+                    <li>Sélectionnez <span class="ui">Suivant</span>.</li>
+                    <li>Vérifiez la précision de la configuration, puis sélectionnez <span class="ui">Créer un groupe Auto Scaling</span>.</li>
+                  </ol>
+
+                  <ol class="steps" start="15">
+                    <li>Choisissez le lien du groupe <code>${TRIGRAMME}-WP-ASG</code>.</li>
+                    <li>Examinez la section <span class="ui">Détails</span> puis cliquez sur <span class="ui">Activité</span>. L'<em>Historique d'activités</em> garde une trace des évènements de l'<span class="aws-svc">ASG</span>.</li>
+                    <li>Sélectionnez l'onglet <span class="ui">Gestion des instances</span>. L'<span class="aws-svc">ASG</span> a lancé deux instances <span class="aws-svc">EC2</span>, à l'état de cycle de vie <strong>En service</strong>.</li>
+                    <li>Choisissez l'onglet <span class="ui">Surveillance</span> pour voir les métriques <span class="aws-svc">CloudWatch</span> de l'<span class="aws-svc">ASG</span>.</li>
+                  </ol>
+
+                  <div class="info-box info">
+                    <span class="icon-bubble">i</span>
+                    <div class="body"><p><em>Si les instances ne sont pas encore <strong>En service</strong>, attendez quelques minutes et actualisez.</em></p></div>
+                  </div>
+                </div>
+
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 5.2 — Vérification de l'état de santé des <em>Target Groups</em></h4>
+                  <ol class="steps">
+                    <li>Développez le menu de navigation via l'icône ☰ en haut à gauche.</li>
+                    <li>Dans le panneau gauche, sélectionnez <span class="ui">Groupes cibles</span>.</li>
+                    <li>Sélectionnez le lien <code>${TRIGRAMME}-myWPTargetGroup</code>.</li>
+                    <li>Dans l'onglet <span class="ui">Cibles</span>, patientez le temps que l'état des instances passe à <span class="status-pill healthy">Healthy</span>.</li>
+                  </ol>
+
+                  <div class="info-box warning">
+                    <span class="icon-bubble">!</span>
+                    <div class="body">
+                      <p><span class="label">Remarque :</span> les vérifications peuvent prendre <strong><u>jusqu'à 5 minutes</u></strong> avant d'afficher <span class="status-pill healthy">Healthy</span>. Attendez ce statut avant de continuer. <em>Sinon, revérifiez la configuration du <em>Target Group</em> en Tâche 3.2.</em></p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 5.3 — Connexion à l'application <span class="aws-svc">WordPress</span></h4>
+                  <ol class="steps">
+                    <li>Dans le volet de navigation gauche, cliquez sur <span class="ui">Équilibreurs de charge</span>.</li>
+                    <li>Copiez le <strong>Nom DNS</strong> de l'<span class="aws-svc">ALB</span> et ajoutez <code>/wp-login.php</code> à la fin pour obtenir l'URL d'admin <span class="aws-svc">WordPress</span>.</li>
+                  </ol>
+
+                  <p style="margin:16px 0 8px"><strong>Sortie attendue :</strong> exemple d'URL d'administration <span class="aws-svc">WordPress</span> complète :</p>
+                  <div class="params"><div class="params-row"><div class="key">URL admin</div><div class="val"><code>myWPAppELB-4e009e86b4f704cc.elb.us-west-2.amazonaws.com/wp-login.php</code></div></div></div>
+
+                  <ol class="steps" start="3">
+                    <li>Collez l'URL dans un nouvel onglet du navigateur. La page <em><span class="aws-svc">WordPress</span> login</em> s'affiche.</li>
+                    <li>Saisissez :
+                      <ul>
+                        <li><em>Nom d'utilisateur</em> : <span class="copyable" data-copy="wpadmin">wpadmin</span></li>
+                        <li><em>Mot de passe</em> : <span class="copyable" data-copy="wpadmin1234">wpadmin1234</span></li>
+                      </ul>
+                    </li>
+                    <li>Cliquez sur <span class="ui">Connexion</span>.</li>
+                    <li>Pour afficher le site public, tapez juste le <em>DNS name</em> de l'<span class="aws-svc">ALB</span> dans le navigateur, par exemple :
+                      <div class="params" style="margin-top:10px"><div class="params-row"><div class="key">URL site</div><div class="val"><code>myWPAppELB-4e009e86b4f704cc.elb.us-west-2.amazonaws.com</code></div></div></div>
+                    </li>
+                  </ol>
+
+                  <div class="info-box tip">
+                    <span class="icon-bubble">★</span>
+                    <div class="body"><p><span class="label">Astuce :</span> assurez-vous d'accéder en <code>http</code> et non en <code>https</code> au site web.</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============ CONCLUSION ============ -->
+      <section id="conclusion" aria-labelledby="conclusion-title">
+        <div class="conclusion">
+          <h2 id="conclusion-title"><span class="accent">Félicitations !
+          <p class="conclusion-lead">Vous venez de déployer une infrastructure web <em>highly available</em>, <em>elastic</em> et <em>cost-optimised</em>, prête pour la production.</p>
+          <ul class="conclusion-list">
+            <li><span class="check">✓</span><span>Déployer un <strong>réseau virtuel</strong> réparti sur plusieurs <em>Availability Zones</em> via <span class="aws-svc">CloudFormation</span>.</span></li>
+            <li><span class="check">✓</span><span>Créer une <strong>base de données relationnelle</strong> hautement disponible et entièrement gérée avec <span class="aws-svc">Amazon RDS</span> + <span class="aws-svc">Aurora</span>.</span></li>
+            <li><span class="check">✓</span><span>Utiliser <span class="aws-svc">Amazon EFS</span> pour fournir une <strong>couche de stockage partagée</strong> multi-AZ via <em>NFS</em>.</span></li>
+            <li><span class="check">✓</span><span>Créer un <strong>groupe de serveurs web</strong> qui s'adapte automatiquement aux variations de charge avec un <span class="aws-svc">Auto Scaling Group</span>.</span></li>
+          </ul>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="site-footer">
+    <p>
+      <strong>Architecting on AWS</strong> · Lab Guide v3.1 ·
+      <span class="aws-svc">WordPress</span> HA on AWS ·
+      © <span class="year">2026</span> onepoint
+    </p>
+    <p style="margin-top:6px;font-size:13px;opacity:0.75">
+      Templates : <a href="Task1LabArchiAsso.yaml" download>Task1LabArchiAsso.yaml</a> ·
+      <a href="Task4LabArchiAsso.yaml" download>Task4LabArchiAsso.yaml</a>
+    </p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
