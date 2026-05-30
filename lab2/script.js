@@ -161,6 +161,59 @@
     sections.forEach((s) => obs.observe(s));
   }
 
+  // ---------- bonus challenges: gate toggle ----------
+  const gate = document.querySelector('.challenge-gate');
+  const challengesBody = document.getElementById('challenges-body');
+  if (gate && challengesBody) {
+    if (state.challengesOpen) {
+      challengesBody.classList.add('open');
+      gate.setAttribute('aria-expanded', 'true');
+    }
+    gate.addEventListener('click', () => {
+      const open = challengesBody.classList.toggle('open');
+      gate.setAttribute('aria-expanded', open ? 'true' : 'false');
+      state.challengesOpen = open;
+      saveState(state);
+    });
+  }
+
+  // ---------- bonus challenges: progressive hint reveal ----------
+  state.hints = state.hints || {};
+  document.querySelectorAll('.challenge-card').forEach((card) => {
+    const list = card.querySelector('.hints');
+    if (!list) return;
+    const cid = list.dataset.challenge;
+    const hints = Array.from(list.querySelectorAll('.hint'));
+    const btn = card.querySelector('.hint-reveal');
+    const counter = card.querySelector('.hint-counter');
+    const total = hints.length;
+    let shown = Math.min(state.hints[cid] || 0, total);
+
+    const render = () => {
+      hints.forEach((h, i) => h.classList.toggle('revealed', i < shown));
+      counter.textContent = `${shown} / ${total} indice${total > 1 ? 's' : ''} révélé${shown > 1 ? 's' : ''}`;
+      if (shown >= total) {
+        btn.hidden = true;
+      } else {
+        btn.hidden = false;
+        const lbl = btn.querySelector('.hint-reveal-label');
+        if (lbl) lbl.textContent = shown === 0 ? 'Débloquer un indice' : 'Indice suivant';
+      }
+    };
+    render();
+
+    btn.addEventListener('click', () => {
+      if (shown < total) {
+        shown += 1;
+        state.hints[cid] = shown;
+        saveState(state);
+        render();
+        const last = hints[shown - 1];
+        if (last) last.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    });
+  });
+
   // ---------- year ----------
   const yr = document.querySelector('.year');
   if (yr) yr.textContent = new Date().getFullYear();

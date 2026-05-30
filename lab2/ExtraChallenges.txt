@@ -1,0 +1,194 @@
+==========================================================================
+  DÉFIS BONUS — Lab 2 : Application Serverless Text-to-Speech
+==========================================================================
+
+Ces défis sont OPTIONNELS et à réaliser une fois le lab principal terminé
+et fonctionnel. Ce sont des pistes : les astuces vous guident sans donner
+la solution complète. À vous de chercher, tester et débloquer !
+
+Niveau de difficulté :
+  Défi 1  -  ★★☆☆☆  (accessible, ~20-30 min)
+  Défi 2  -  ★★★★☆  (exigeant, ~60-90 min)
+
+
+##########################################################################
+  DÉFI 1 — Héberger le site web sur Amazon S3
+##########################################################################
+
+Objectif : au lieu d'ouvrir index.html en local (file://), servir le site
+directement depuis un bucket Amazon S3 et le faire fonctionner de bout en
+bout (conversion + lecture des MP3).
+
+--- Astuces ---
+
+Astuce 1.1 : créez (ou réutilisez) un bucket S3 et activez "Static website
+             hosting" dans l'onglet Properties. Indiquez index.html comme
+             "Index document".
+
+Astuce 1.2 : uploadez les 3 fichiers (index.html, styles.css, scripts.js)
+             à la racine du bucket.
+
+Astuce 1.3 : rendez le bucket et son contenu accessibles publiquement.
+             - Désactivez "Block all public access" sur le bucket.
+             - Ajoutez une bucket policy adéquate autorisant l'action
+               s3:GetObject en lecture publique sur tous les objets
+               (Resource = arn:aws:s3:::<nom-bucket>/*).
+
+Astuce 1.4 : l'application doit toujours joindre votre API. Comme l'API
+             Gateway a déjà le CORS activé (Défi du lab), les appels depuis
+             la nouvelle origine S3 fonctionneront. Si vous voyez une erreur
+             CORS dans la console du navigateur (F12), revérifiez que CORS
+             est bien activé sur VOS méthodes et que l'API a été redéployée.
+
+--- C'est réussi quand... ---
+  - Vous ouvrez l'URL du "website endpoint" S3 dans un navigateur.
+  - Vous convertissez un texte et écoutez le MP3 généré, comme en local.
+
+--- Pour aller plus loin / à remarquer ---
+  L'URL du website endpoint S3 est en HTTP, PAS en HTTPS.
+  ... ce qui tombe bien : c'est exactement le point de départ du Défi 2 !
+
+
+##########################################################################
+  DÉFI 2 — Sécuriser le site avec HTTPS puis Amazon Cognito
+##########################################################################
+
+Objectif : n'autoriser l'accès qu'aux utilisateurs authentifiés.
+
+IMPORTANT — il y a DEUX couches à sécuriser, ne les confondez pas :
+  (A) Le FRONTEND : l'utilisateur doit se connecter pour obtenir un jeton
+      (token) avant de pouvoir utiliser la page.
+  (B) L'API (back-end) : API Gateway doit REFUSER tout appel qui ne
+      présente pas un jeton Cognito valide.
+Une solution complète couvre les deux : on se connecte côté frontend pour
+OBTENIR un token, puis l'API VÉRIFIE ce token à chaque appel.
+
+Procédez par phases, dans l'ordre. Testez après chaque phase.
+
+
+--- PHASE 1 : passer le site en HTTPS ---
+
+Pourquoi d'abord ? Cognito exige des URL de callback en HTTPS (sauf
+localhost). Un endpoint S3 en HTTP ne peut donc pas servir de page de
+redirection après connexion.
+
+Astuce 1.1 : deux options classiques (choisissez-en UNE) :
+   - Option A — Amazon CloudFront devant le bucket S3 : crée une
+     distribution avec une URL https://xxxx.cloudfront.net et un
+     certificat par défaut. Plus de contrôle, un peu plus de configuration.
+   - Option B — AWS Amplify Hosting : déposez le contenu (ou le ZIP) et
+     Amplify fournit automatiquement une URL HTTPS. Le plus simple/rapide.
+
+Astuce 1.2 : notez bien votre URL HTTPS finale — elle servira d'URL de
+             callback Cognito en Phase 2.
+
+C'est réussi quand : le site s'ouvre en https:// et fonctionne toujours.
+
+
+--- PHASE 2 : créer le pool d'utilisateurs Cognito + Hosted UI ---
+
+Astuce 2.1 : créez un "User Pool" Amazon Cognito (connexion par email ou
+             username, comme vous voulez). Créez au moins un utilisateur
+             de test.
+
+Astuce 2.2 : créez un "App client".
+             - Type : application publique (SPA / navigateur) -> SANS secret
+               client (les apps front-end ne peuvent pas garder un secret).
+
+Astuce 2.3 : activez le "Hosted UI" (domaine Cognito) :
+             - Choisissez un domaine Cognito (ex. xxx-tts.auth.<region>...).
+             - Allowed callback URL  = votre URL HTTPS de la Phase 1.
+             - Allowed sign-out URL  = votre URL HTTPS de la Phase 1.
+             - OAuth flows : "Authorization code grant" (recommandé) ou
+               "Implicit grant" (plus simple à tester, jeton dans l'URL).
+             - OAuth scopes : openid, email, profile.
+
+Astuce 2.4 : testez la "View Hosted UI" : vous devez voir une page de
+             connexion hébergée par AWS et pouvoir vous connecter avec
+             votre utilisateur de test.
+
+C'est réussi quand : la connexion via Hosted UI vous renvoie sur votre
+site HTTPS avec un jeton (token) présent dans l'URL (#id_token=... ou
+?code=...).
+
+
+--- PHASE 3 : protéger l'API avec un Cognito Authorizer ---
+
+Réf. officielle :
+  https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-enable-cognito-user-pool.html
+
+Astuce 3.1 : dans API Gateway, créez un "Authorizer" de type
+             "Cognito user pool", pointant vers le pool de la Phase 2.
+             - "Token source" (en-tête) = Authorization
+               (retenez ce nom exact, le frontend devra l'utiliser).
+
+Astuce 3.2 : attachez l'authorizer à vos méthodes POST et GET
+             (Method Request -> Authorization -> votre authorizer).
+
+Astuce 3.3 : NE protégez PAS la méthode OPTIONS ! Le navigateur envoie une
+             requête "preflight" OPTIONS sans jeton ; si elle exige une
+             authentification, vous aurez une erreur CORS. OPTIONS reste
+             donc public.
+
+Astuce 3.4 : REDÉPLOYEZ l'API (Deploy API) sur le stage Lab-TextToSpeech,
+             sinon vos changements ne sont pas pris en compte.
+
+C'est réussi quand : un appel à l'API SANS en-tête Authorization renvoie
+401 Unauthorized, et un appel AVEC un jeton valide renvoie 200.
+(Testez avec l'outil de test de la console, Postman, ou curl.)
+
+
+--- PHASE 4 : connecter le frontend (login + envoi du jeton) ---
+
+C'est ici que les deux couches se rejoignent. Vous devrez adapter
+scripts.js (c'est attendu : c'est un défi !).
+
+Astuce 4.1 : si l'utilisateur n'a pas de jeton, redirigez-le vers l'URL du
+             Hosted UI Cognito (login). Au retour, récupérez le jeton :
+             - flux "Implicit"  : il est dans le fragment d'URL (#id_token=).
+             - flux "Auth code" : échangez le "code" contre des jetons via
+               l'endpoint /oauth2/token du domaine Cognito.
+
+Astuce 4.2 : à chaque appel de l'API (fetch), ajoutez l'en-tête :
+                 Authorization: <jeton>
+             Utilisez de préférence le ID token (id_token) pour un
+             authorizer "Cognito user pool". Le nom d'en-tête doit
+             correspondre EXACTEMENT à la "Token source" de l'Astuce 3.1.
+
+Astuce 4.3 : pensez à l'expiration. Les jetons Cognito expirent (1h par
+             défaut) -> au-delà, l'API renverra 401. Reconnectez-vous ou
+             rafraîchissez le jeton.
+
+C'est réussi quand :
+  - Sans être connecté, on ne peut pas utiliser l'application (ou on est
+    redirigé vers la page de login).
+  - Après connexion, la conversion de texte et la lecture des MP3
+    fonctionnent normalement.
+
+
+--- Si vous êtes vraiment bloqué (indices supplémentaires) ---
+
+  * Erreur CORS après avoir ajouté l'authorizer ?
+    -> 99% du temps : la méthode OPTIONS est devenue protégée, ou l'en-tête
+       Authorization n'est pas autorisé dans la config CORS. Réactivez CORS
+       et redéployez.
+
+  * 401 alors que vous envoyez bien un jeton ?
+    -> Vérifiez : bon type de jeton (id_token), nom d'en-tête exact
+       (Authorization), jeton non expiré, et authorizer bien rattaché à la
+       bonne méthode + API redéployée.
+
+  * "Implicit grant" est le plus rapide pour un test manuel (le jeton
+    arrive directement dans l'URL). "Authorization code grant" est la
+    bonne pratique en production mais demande un échange de code en plus.
+
+  * Bibliothèques qui simplifient tout le flux front (optionnel) :
+    AWS Amplify Auth, ou la lib amazon-cognito-identity-js.
+
+
+--- BONUS (facultatif, pour les plus rapides) ---
+  - Restreindre l'accès au bucket S3 pour qu'on ne puisse PLUS l'ouvrir en
+    direct (HTTP), et forcer le passage par CloudFront/HTTPS uniquement
+    (Origin Access Control).
+  - Personnaliser la page de connexion Hosted UI (logo, couleurs).
+  - Ajouter une déconnexion (bouton "Logout" -> endpoint /logout Cognito).

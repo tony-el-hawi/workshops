@@ -1048,6 +1048,79 @@
         </div>
       </section>
 
+      <!-- ============ BONUS CHALLENGES (discreet, progressive) ============ -->
+      <section class="challenges-zone" id="challenges" aria-label="Défis bonus">
+        <button class="challenge-gate" type="button" aria-expanded="false" aria-controls="challenges-body">
+          <span class="lock">🔒</span>
+          <span>Lab terminé&nbsp;? Deux défis bonus vous attendent — à tenter seulement quand tout fonctionne.</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+
+        <div class="challenges-body" id="challenges-body">
+          <div class="challenges-intro">
+            <h2>Défis <span class="accent">bonus</span></h2>
+            <p>Pas de solution toute faite ici&nbsp;: juste des pistes. Débloquez les indices <strong>un par un</strong>, et seulement si vous bloquez vraiment. Cherchez d'abord par vous-même.</p>
+          </div>
+
+          <!-- CHALLENGE 1 -->
+          <article class="challenge-card">
+            <header class="challenge-head">
+              <div class="cnum">1</div>
+              <div class="ctitle">
+                <p class="eyebrow">Défi bonus</p>
+                <h3>Héberger le site sur <span class="aws-svc">Amazon S3</span></h3>
+              </div>
+              <div class="challenge-diff" title="Difficulté : 2/4"><span class="on">★★</span><span class="off">★★</span></div>
+            </header>
+            <div class="challenge-body">
+              <p class="challenge-goal">
+                Servez le site depuis un bucket <span class="aws-svc">S3</span> au lieu de l'ouvrir en local — conversion et lecture des <em>MP3</em> doivent fonctionner.
+              </p>
+              <div class="hints" data-challenge="1">
+                <div class="hint"><span class="hnum">1</span><span>Le service <span class="aws-svc">S3</span> sait servir un site statique. Cherchez l'option côté <em>Properties</em> du bucket.</span></div>
+                <div class="hint"><span class="hnum">2</span><span>Par défaut, vos objets ne sont pas lisibles depuis le web. Un bucket privé ne servira pas votre page…</span></div>
+                <div class="hint"><span class="hnum">3</span><span>Deux verrous à lever&nbsp;: le <em>Block Public Access</em> du bucket, <strong>et</strong> une autorisation explicite en lecture sur les objets.</span></div>
+                <div class="hint final"><span class="hnum">!</span><span>Une <em>bucket policy</em> avec <span class="val-pill">s3:GetObject</span> public est la pièce manquante. Et regardez bien l'URL obtenue&nbsp;: elle est en <em>http</em>… utile pour le défi 2.</span></div>
+              </div>
+              <div class="hint-actions">
+                <button class="hint-reveal" type="button"><span class="key">?</span> <span class="hint-reveal-label">Débloquer un indice</span></button>
+                <span class="hint-counter">0 / 4 indices révélés</span>
+              </div>
+            </div>
+          </article>
+
+          <!-- CHALLENGE 2 -->
+          <article class="challenge-card">
+            <header class="challenge-head">
+              <div class="cnum">2</div>
+              <div class="ctitle">
+                <p class="eyebrow">Défi bonus</p>
+                <h3>Authentifier l'accès avec <span class="aws-svc">Amazon Cognito</span></h3>
+              </div>
+              <div class="challenge-diff" title="Difficulté : 4/4"><span class="on">★★★★</span></div>
+            </header>
+            <div class="challenge-body">
+              <p class="challenge-goal">
+                N'autorisez l'usage de l'application qu'aux utilisateurs <strong>connectés</strong>. Avancez par étapes&nbsp;: testez après chacune.
+              </p>
+              <div class="hints" data-challenge="2">
+                <div class="hint"><span class="hnum">1</span><span>Deux choses différentes à protéger&nbsp;: le <strong>site</strong> (se connecter pour entrer) et l'<strong>API</strong> (refuser les appels sans preuve d'identité). Gardez-les en tête.</span></div>
+                <div class="hint"><span class="hnum">2</span><span>D'abord, du <em>https</em>. <span class="aws-svc">Cognito</span> n'accepte pas un retour de connexion en <em>http</em>. Comment mettre votre site en <em>https</em>&nbsp;?</span></div>
+                <div class="hint"><span class="hnum">3</span><span>Côté front, vous n'avez pas à coder une page de login&nbsp;: <span class="aws-svc">Cognito</span> peut en héberger une pour vous.</span></div>
+                <div class="hint"><span class="hnum">4</span><span>Côté <span class="aws-svc">API Gateway</span>, il existe un type d'<em>authorizer</em> dédié à <span class="aws-svc">Cognito</span>. Branchez-le sur vos méthodes… mais pas sur toutes.</span></div>
+                <div class="hint"><span class="hnum">5</span><span>Piège classique&nbsp;: <span class="val-pill">OPTIONS</span> (le <em>preflight</em> CORS) voyage sans jeton. S'il est protégé, tout casse. Et redéployez l'API après chaque changement.</span></div>
+                <div class="hint final"><span class="hnum">!</span><span>Dernier maillon&nbsp;: le navigateur doit joindre son jeton à chaque appel via l'en-tête <span class="val-pill">Authorization</span> (le même nom que la <em>token source</em> de l'authorizer). Pensez aussi à l'expiration du jeton.</span></div>
+              </div>
+              <div class="hint-actions">
+                <button class="hint-reveal" type="button"><span class="key">?</span> <span class="hint-reveal-label">Débloquer un indice</span></button>
+                <span class="hint-counter">0 / 6 indices révélés</span>
+              </div>
+              <p class="challenge-doclink">Une seule référence officielle, si besoin&nbsp;: <a href="https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-enable-cognito-user-pool.html" target="_blank" rel="noopener">API Gateway + Cognito user pool</a>.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
     </main>
   </div>
 
