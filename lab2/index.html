@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Atelier AWS — Application Serverless Text-to-Speech avec Amazon Polly, Lambda, API Gateway, DynamoDB, SNS et S3. Guide pas à pas en français.">
+  <title>Atelier AWS — Serverless Text-to-Speech avec Amazon Polly</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23232f3e'/%3E%3Ctext x='50' y='66' font-family='Inter,sans-serif' font-size='40' font-weight='700' text-anchor='middle' fill='%2301A88D'%3ETTS%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+
+  <!-- ============ HEADER ============ -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">
+        <button class="menu-toggle" aria-label="Ouvrir le menu" title="Menu">☰</button>
+        <div class="brand-mark">TTS</div>
+        <div class="brand-text">
+          <span class="brand-title">Application Serverless Text-to-Speech</span>
+          <span class="brand-sub">Cloud Level 2 · Lab Grow &amp; Go · Amazon Polly · v1.4 (FR)</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="progress-pill" title="Votre progression dans l'atelier">
+          <span class="progress-text">0/10 étapes</span>
+          <span class="progress-bar"><span class="progress-fill" style="width:0%"></span></span>
+        </div>
+        <button class="btn-reset" type="button" title="Réinitialiser la progression">Réinitialiser</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- ============ SIDE NAV ============ -->
+    <nav class="side-nav" aria-label="Sommaire de l'atelier">
+      <p class="nav-title">Atelier</p>
+      <ul class="nav-list">
+        <li><a href="#intro"><span class="nav-num"><span>i</span></span> Introduction</a></li>
+        <li><a href="#architecture"><span class="nav-num"><span>A</span></span> Architecture</a></li>
+        <li><a href="#pre-flight"><span class="nav-num"><span>P</span></span> Avant de commencer</a></li>
+      </ul>
+
+      <p class="nav-title">Étapes</p>
+      <ul class="nav-list">
+        <li><a href="#step-1" data-task="1"><span class="nav-num"><span>1</span></span> DynamoDB</a></li>
+        <li><a href="#step-2" data-task="2"><span class="nav-num"><span>2</span></span> Bucket S3</a></li>
+        <li><a href="#step-3" data-task="3"><span class="nav-num"><span>3</span></span> Topic SNS</a></li>
+        <li><a href="#step-4" data-task="4"><span class="nav-num"><span>4</span></span> Lambda New Posts</a></li>
+        <li><a href="#step-5" data-task="5"><span class="nav-num"><span>5</span></span> Lambda Convert to Audio</a></li>
+        <li><a href="#step-6" data-task="6"><span class="nav-num"><span>6</span></span> Lambda Get Posts</a></li>
+        <li><a href="#step-7" data-task="7"><span class="nav-num"><span>7</span></span> API Gateway</a></li>
+        <li><a href="#step-8" data-task="8"><span class="nav-num"><span>8</span></span> Interface Web</a></li>
+        <li><a href="#step-9" data-task="9"><span class="nav-num"><span>9</span></span> Vérification DynamoDB &amp; S3</a></li>
+      </ul>
+
+      <p class="nav-title">Fin</p>
+      <ul class="nav-list">
+        <li><a href="#conclusion"><span class="nav-num"><span>★</span></span> Conclusion</a></li>
+      </ul>
+    </nav>
+
+    <!-- ============ MAIN ============ -->
+    <main class="main">
+
+      <!-- ============ HERO ============ -->
+      <section class="hero" id="top" aria-labelledby="hero-title">
+        <span class="hero-eyebrow">Cloud Level 2 · Lab Guide v1.4</span>
+        <h1 id="hero-title">Application Serverless <span class="accent">Text-to-Speech</span></h1>
+        <p class="hero-lead">
+          Construisez une application <em>Text-to-Speech</em> 100&nbsp;% <em>serverless</em> qui convertit du texte en audio grâce à
+          <span class="aws-svc">Amazon Polly</span>, orchestrée par <span class="aws-svc">AWS Lambda</span>,
+          <span class="aws-svc">Amazon API Gateway</span>, <span class="aws-svc">Amazon DynamoDB</span>,
+          <span class="aws-svc">Amazon SNS</span> et <span class="aws-svc">Amazon S3</span>.
+        </p>
+        <div class="hero-meta">
+          <span class="hero-meta-item"><span class="icon">⏱</span> Durée estimée : 60 min</span>
+          <span class="hero-meta-item"><span class="icon">🎯</span> Niveau : Cloud Level 2</span>
+          <span class="hero-meta-item"><span class="icon">🇫🇷</span> Langue : Français</span>
+          <span class="hero-meta-item"><span class="icon">⚡</span> 100 % Serverless</span>
+        </div>
+      </section>
+
+      <!-- ============ INTRODUCTION ============ -->
+      <section id="intro" aria-labelledby="intro-title">
+        <header class="section-header">
+          <p class="section-eyebrow">Mise en contexte</p>
+          <h2 class="section-title" id="intro-title">Introduction</h2>
+          <p class="section-lead">Pourquoi le <em>serverless</em>, et ce que vous allez construire.</p>
+        </header>
+
+        <div class="card scenario-card">
+          <p>
+            L'objectif de ce lab est de mettre en œuvre une application <strong>Text-to-Speech</strong> en utilisant les services
+            <em>serverless</em> d'AWS, et en particulier <span class="aws-svc">Amazon Polly</span> qui permet la conversion d'un
+            texte en audio.
+          </p>
+          <p>
+            Les services <em>serverless</em> sont entièrement managés par AWS&nbsp;: haute disponibilité, montée en charge,
+            configuration et mises à jour (montées de version, patchs de sécurité) sont gérées automatiquement. Vous vous
+            concentrez uniquement sur l'application à livrer.
+          </p>
+          <p>L'application repose sur les services suivants&nbsp;:</p>
+          <ul>
+            <li>Des fonctions <span class="aws-svc">AWS Lambda</span> pour l'implémentation des traitements</li>
+            <li><span class="aws-svc">Amazon API Gateway</span> pour l'exposition des API</li>
+            <li><span class="aws-svc">Amazon Polly</span> pour la conversion du texte en audio</li>
+            <li>Un bucket <span class="aws-svc">Amazon S3</span> pour le stockage des fichiers <em>MP3</em> générés</li>
+            <li>Une table <span class="aws-svc">Amazon DynamoDB</span> (NoSQL) pour le stockage des données</li>
+            <li><span class="aws-svc">Amazon SNS</span> pour la gestion des notifications entre composants</li>
+          </ul>
+          <p>
+            L'application utilise <strong>deux flux</strong>&nbsp;: l'un pour envoyer un texte à convertir en <em>MP3</em>,
+            l'autre pour récupérer le fichier <em>MP3</em> généré. Le traitement est <strong>asynchrone</strong>&nbsp;:
+            l'utilisateur reçoit immédiatement un identifiant pendant que la conversion se poursuit en arrière-plan.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============ ARCHITECTURE ============ -->
+      <section id="architecture" aria-labelledby="arch-title">
+        <header class="section-header">
+          <p class="section-eyebrow">Vue d'ensemble</p>
+          <h2 class="section-title" id="arch-title">Architecture &amp; workflow</h2>
+          <p class="section-lead">Le schéma ci-dessous présente le flux complet, de la requête web jusqu'à la lecture du <em>MP3</em>.</p>
+        </header>
+
+        <figure class="architecture-frame svg-frame">
+          <img src="images/architecture.svg" alt="Workflow serverless Text-to-Speech : navigateur, API Gateway, Lambda, SNS, Polly, DynamoDB et S3">
+          <figcaption class="caption">Workflow <em>serverless</em> — <span class="aws-svc">API Gateway</span> → <span class="aws-svc">Lambda</span> → <span class="aws-svc">SNS</span> → <span class="aws-svc">Polly</span>, avec <span class="aws-svc">DynamoDB</span> et <span class="aws-svc">S3</span> pour la persistance.</figcaption>
+        </figure>
+
+        <div class="info-box info">
+          <span class="icon-bubble">i</span>
+          <div class="body">
+            <p><span class="label">Flux d'envoi (1→8) :</span> la page web appelle l'API REST → <span class="aws-svc">API Gateway</span> déclenche <span class="val-pill">NewPost</span> → écriture dans <span class="aws-svc">DynamoDB</span> + publication sur <span class="aws-svc">SNS</span> → <span class="val-pill">ConvertToAudio</span> appelle <span class="aws-svc">Polly</span> → le <em>MP3</em> est stocké dans <span class="aws-svc">S3</span> et <span class="aws-svc">DynamoDB</span> est mise à jour.</p>
+            <p><span class="label">Flux de récupération (9→10) :</span> la méthode GET appelle <span class="val-pill">GetPost</span> qui lit <span class="aws-svc">DynamoDB</span>, puis le navigateur lit le <em>MP3</em> directement depuis <span class="aws-svc">S3</span>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ PRE-FLIGHT ============ -->
+      <section id="pre-flight" aria-labelledby="pre-title">
+        <header class="section-header">
+          <p class="section-eyebrow">Préparation</p>
+          <h2 class="section-title" id="pre-title">Avant de commencer</h2>
+          <p class="section-lead">Connexion à la console et quelques réglages utiles.</p>
+        </header>
+
+        <div class="card scenario-card">
+          <p>Connectez-vous à la console AWS&nbsp;: <a href="https://onepoint-cosquad.signin.aws.amazon.com/console" target="_blank" rel="noopener">onepoint-cosquad.signin.aws.amazon.com/console</a></p>
+          <p>Suivez les instructions fournies pour renseigner votre <span class="val-pill">IAM Username</span> et votre <span class="val-pill">Password</span>.</p>
+        </div>
+
+        <div class="info-box tip">
+          <span class="icon-bubble">★</span>
+          <div class="body">
+            <p><span class="label">Astuces :</span></p>
+            <p>• Si la console n'est pas en anglais, basculez la langue par défaut en <strong>English</strong>.</p>
+            <p>• Placez-vous dans la région <strong>Francfort</strong>, <strong>Paris</strong> ou <strong>Irlande</strong> selon les instructions données à votre groupe, et restez-y pour tout l'atelier.</p>
+          </div>
+        </div>
+
+        <div class="info-box info">
+          <span class="icon-bubble">i</span>
+          <div class="body">
+            <p><span class="label">Trigramme / utilisateur :</span> plusieurs ressources que vous créerez sont préfixées par votre trigramme (<span class="val-pill">XXX</span>) ou par votre identifiant <em>première lettre du prénom + nom</em> (ex. <span class="val-pill">jsmith</span> pour John Smith). Utilisez toujours la même valeur.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- STEP 1 — DynamoDB                                            -->
+      <!-- ============================================================ -->
+      <section id="step-1" aria-labelledby="step-1-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">1</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 1</p>
+              <h3 id="step-1-title">Vérification de la table <span class="aws-svc">DynamoDB</span></h3>
+              <div class="svc-chips"><span class="svc-chip"><span class="dot dot-database"></span>Amazon DynamoDB</span></div>
+            </div>
+            <button class="complete-toggle" data-task="1" type="button" aria-label="Marquer l'étape 1 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Les données transmises à l'application, ainsi que celles générées pendant le traitement, sont stockées dans une table
+              <span class="aws-svc">DynamoDB</span>. Vous allez vérifier que la table <span class="val-pill">TextToSpeech-posts</span> existe et examiner sa structure.
+            </p>
+
+            <p class="subtasks-title">Procédure</p>
+            <ol class="steps">
+              <li>Dans la barre de recherche en haut de la console, saisissez <span class="copyable" data-copy="DynamoDB">DynamoDB</span> et sélectionnez le service <span class="ui">DynamoDB</span>.</li>
+              <li>Vérifiez que la table <span class="copyable" data-copy="TextToSpeech-posts">TextToSpeech-posts</span> existe, puis cliquez dessus.</li>
+              <li>La table comporte une clé primaire nommée <span class="val-pill">id</span> et un index.</li>
+              <li>Cliquez sur l'onglet <span class="ui">Index</span>&nbsp;: la table comporte un index <span class="val-pill">user-index</span> sur la colonne <span class="val-pill">user</span>.</li>
+            </ol>
+
+            <figure class="step-figure">
+              <img src="images/image7.png" alt="Liste des tables DynamoDB montrant TextToSpeech-posts">
+              <figcaption>La table <span class="val-pill">TextToSpeech-posts</span> dans la console <span class="aws-svc">DynamoDB</span>.</figcaption>
+            </figure>
+            <figure class="step-figure">
+              <img src="images/image8.png" alt="Détail de la clé primaire id de la table">
+              <figcaption>Clé primaire <span class="val-pill">id</span> de la table.</figcaption>
+            </figure>
+            <figure class="step-figure">
+              <img src="images/image9.png" alt="Index user-index sur la colonne user">
+              <figcaption>Index secondaire <span class="val-pill">user-index</span> sur la colonne <span class="val-pill">user</span>.</figcaption>
+            </figure>
+
+            <div class="info-box info">
+              <span class="icon-bubble">i</span>
+              <div class="body">
+                <p><span class="label">Schéma dynamique :</span> il n'est pas nécessaire de définir la structure complète. Les colonnes sont créées dynamiquement à l'insertion. L'application stockera&nbsp;:</p>
+                <p><span class="val-pill">id</span> identifiant unique · <span class="val-pill">user</span> auteur · <span class="val-pill">status</span> <em>PROCESSING</em> ou <em>UPDATED</em> · <span class="val-pill">text</span> texte envoyé · <span class="val-pill">voice</span> voix Polly · <span class="val-pill">url</span> lien du MP3 dans S3.</p>
+              </div>
+            </div>
+
+            <figure class="step-figure">
+              <img src="images/image10.png" alt="Exemple de contenu d'items dans la table DynamoDB">
+              <figcaption>Exemple de contenu de la table.</figcaption>
+            </figure>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Table prête.</strong> Vous avez vérifié <span class="val-pill">TextToSpeech-posts</span>, sa clé primaire et son index.</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- STEP 2 — S3                                                  -->
+      <!-- ============================================================ -->
+      <section id="step-2" aria-labelledby="step-2-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">2</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 2</p>
+              <h3 id="step-2-title">Vérification du bucket <span class="aws-svc">Amazon S3</span></h3>
+              <div class="svc-chips"><span class="svc-chip"><span class="dot dot-storage"></span>Amazon S3</span></div>
+            </div>
+            <button class="complete-toggle" data-task="2" type="button" aria-label="Marquer l'étape 2 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Les fichiers audio <em>MP3</em> générés par l'application sont stockés dans un bucket <span class="aws-svc">Amazon S3</span>.
+              Vous allez vérifier que le bucket <span class="val-pill">texttospeech-audiopost</span> existe.
+            </p>
+
+            <p class="subtasks-title">Procédure</p>
+            <ol class="steps">
+              <li>Dans la barre de recherche, saisissez <span class="copyable" data-copy="S3">S3</span> et sélectionnez le service <span class="ui">S3</span>.</li>
+              <li>Vérifiez que le bucket <span class="copyable" data-copy="texttospeech-audiopost">texttospeech-audiopost</span> apparaît dans la liste, puis cliquez dessus.</li>
+              <li>Les fichiers <em>MP3</em> seront rangés dans un sous-répertoire dédié par utilisateur. Le bucket peut être vide ou déjà contenir des répertoires d'autres utilisateurs.</li>
+            </ol>
+
+            <figure class="step-figure">
+              <img src="images/image11.png" alt="Liste des buckets S3 montrant texttospeech-audiopost">
+              <figcaption>Le bucket <span class="val-pill">texttospeech-audiopost</span> dans la console <span class="aws-svc">S3</span>.</figcaption>
+            </figure>
+
+            <div class="info-box warning">
+              <span class="icon-bubble">!</span>
+              <div class="body">
+                <p><span class="label">Accès public (lab uniquement) :</span> pour les besoins du lab, les <em>MP3</em> générés doivent être accessibles publiquement afin que le lecteur audio de la page web puisse les lire. En production, on privilégierait des <em>URL signées</em> plutôt qu'un accès public.</p>
+              </div>
+            </div>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Bucket prêt.</strong> Le stockage des <em>MP3</em> est en place.</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- STEP 3 — SNS                                                 -->
+      <!-- ============================================================ -->
+      <section id="step-3" aria-labelledby="step-3-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">3</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 3</p>
+              <h3 id="step-3-title">Vérification du topic <span class="aws-svc">Amazon SNS</span></h3>
+              <div class="svc-chips"><span class="svc-chip"><span class="dot dot-appint"></span>Amazon SNS</span></div>
+            </div>
+            <button class="complete-toggle" data-task="3" type="button" aria-label="Marquer l'étape 3 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              La conversion d'un texte en audio s'appuie sur <strong>deux fonctions Lambda</strong> découplées par un topic
+              <span class="aws-svc">SNS</span>. Vous allez vérifier que le topic <span class="val-pill">TextToSpeech-new_posts</span> existe et noter son <em>ARN</em>.
+            </p>
+
+            <div class="subscenario">
+              <p>
+                La première fonction stocke les données dans <span class="aws-svc">DynamoDB</span>&nbsp;; la seconde effectue la conversion via
+                <span class="aws-svc">Polly</span>. Le découplage par <span class="aws-svc">SNS</span> permet des appels <strong>asynchrones</strong>&nbsp;: l'utilisateur reçoit
+                immédiatement l'identifiant de sa demande sans attendre la fin de la conversion — utile pour les textes volumineux
+                (100&nbsp;000 mots ou plus) qui peuvent prendre plusieurs minutes.
+              </p>
+            </div>
+
+            <p class="subtasks-title">Procédure</p>
+            <ol class="steps">
+              <li>Dans la barre de recherche, saisissez <span class="copyable" data-copy="SNS">SNS</span> et sélectionnez <span class="ui">Simple Notification Service</span>.</li>
+              <li>Dans le menu de gauche, cliquez sur <span class="ui">Topics</span>.</li>
+              <li>Vérifiez que le topic <span class="copyable" data-copy="TextToSpeech-new_posts">TextToSpeech-new_posts</span> apparaît dans la liste, puis cliquez dessus.</li>
+              <li><strong>Notez l'<em>ARN</em></strong> du topic (format <span class="val-pill">arn:aws:sns:…</span>) — vous en aurez besoin pour configurer la fonction Lambda.</li>
+            </ol>
+
+            <figure class="step-figure">
+              <img src="images/image12.png" alt="Liste des topics SNS montrant TextToSpeech-new_posts">
+              <figcaption>Le topic <span class="val-pill">TextToSpeech-new_posts</span> dans la console <span class="aws-svc">SNS</span>.</figcaption>
+            </figure>
+            <figure class="step-figure">
+              <img src="images/image13.png" alt="Détail du topic SNS avec son ARN">
+              <figcaption>L'<em>ARN</em> du topic, à copier dans un éditeur de texte.</figcaption>
+            </figure>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Topic prêt.</strong> Vous avez relevé l'<em>ARN</em> de <span class="val-pill">TextToSpeech-new_posts</span>.</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- STEP 4 — Lambda New Posts                                    -->
+      <!-- ============================================================ -->
+      <section id="step-4" aria-labelledby="step-4-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">4</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 4</p>
+              <h3 id="step-4-title">Fonction <span class="aws-svc">Lambda</span> « New Posts »</h3>
+              <div class="svc-chips">
+                <span class="svc-chip"><span class="dot dot-compute"></span>AWS Lambda</span>
+                <span class="svc-chip"><span class="dot dot-database"></span>DynamoDB</span>
+                <span class="svc-chip"><span class="dot dot-appint"></span>SNS</span>
+              </div>
+            </div>
+            <button class="complete-toggle" data-task="4" type="button" aria-label="Marquer l'étape 4 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Cette première fonction <span class="aws-svc">Lambda</span> est le <strong>point d'entrée</strong> de l'application&nbsp;: elle reçoit
+              les nouveaux messages à convertir, les enregistre dans <span class="aws-svc">DynamoDB</span> et publie une notification sur <span class="aws-svc">SNS</span>.
+            </p>
+
+            <div class="option-grid">
+              <div class="option-card">
+                <span class="tag">Option A — la plus rapide</span>
+                <h4>Utiliser la fonction existante</h4>
+                <p>Réutilisez <span class="val-pill">PostReader_NewPost</span> déjà déployée. Vérifiez ses variables d'environnement et testez-la.</p>
+              </div>
+              <div class="option-card alt">
+                <span class="tag">Option B — créer la vôtre</span>
+                <h4>Créer <span class="val-pill">XXX-PostReader_NewPost</span></h4>
+                <p>Créez votre propre fonction <em>from scratch</em> en Python 3.10 avec le rôle <span class="val-pill">LabTextToSpeechRole</span>.</p>
+              </div>
+            </div>
+
+            <!-- OPTION A -->
+            <h4 class="step-group-title">Option A — Utiliser <span class="val-pill">PostReader_NewPost</span></h4>
+            <ol class="steps">
+              <li>Recherchez et ouvrez le service <span class="ui">Lambda</span>, puis cliquez sur la fonction <span class="val-pill">PostReader_NewPost</span>.</li>
+              <li>Onglet <span class="ui">Configuration</span> → <span class="ui">Environment variables</span>. Vérifiez les deux variables&nbsp;:</li>
+            </ol>
+            <div class="envtable">
+              <div class="row"><div class="k">DB_TABLE_NAME</div><div class="v"><span class="copyable" data-copy="TextToSpeech-posts">TextToSpeech-posts</span></div></div>
+              <div class="row"><div class="k">SNS_TOPIC</div><div class="v"><span class="val-pill">arn:aws:sns:…</span> (ARN du topic <span class="val-pill">TextToSpeech-new_posts</span>)</div></div>
+            </div>
+            <ol class="steps" start="3">
+              <li>Onglet <span class="ui">Test</span> → <em>Name</em>&nbsp;: <span class="copyable" data-copy="TextToSpeech">TextToSpeech</span>, et dans l'éditeur&nbsp;:</li>
+            </ol>
+            <div class="code-block">
+              <div class="code-head"><span class="lang">JSON · événement de test</span><button class="code-copy" type="button">Copier</button></div>
+              <pre><code>{
+  <span class="tok-str">"voice"</span>: <span class="tok-str">"Joanna"</span>,
+  <span class="tok-str">"text"</span>: <span class="tok-str">"Hello ! This is Joanna!"</span>,
+  <span class="tok-str">"user"</span>: <span class="tok-str">"demo"</span>
+}</code></pre>
+            </div>
+            <ol class="steps" start="4">
+              <li>Cliquez sur <span class="ui">Test</span>. En cas de succès, l'identifiant généré s'affiche&nbsp;; sinon, la cause est décrite dans la section <span class="ui">Details</span>.</li>
+              <li>Passez ensuite directement à l'<a href="#step-5">étape 5</a>.</li>
+            </ol>
+
+            <figure class="step-figure">
+              <img src="images/image17.png" alt="Résultat d'exécution réussie de la fonction Lambda">
+              <figcaption>Exécution réussie — l'identifiant du post est retourné.</figcaption>
+            </figure>
+
+            <!-- OPTION B -->
+            <h4 class="step-group-title">Option B — Créer <span class="val-pill">XXX-PostReader_NewPost</span></h4>
+            <ol class="steps">
+              <li>Service <span class="ui">Lambda</span> → <span class="ui">Create function</span>.</li>
+              <li>Choisissez <span class="ui">Author from scratch</span> et renseignez&nbsp;:
+                <ul>
+                  <li><em>Function name</em>&nbsp;: <span class="val-pill">XXX-PostReader_NewPost</span> (remplacez <span class="val-pill">XXX</span> par votre trigramme en minuscules)</li>
+                  <li><em>Runtime</em>&nbsp;: <span class="val-pill">Python 3.10</span> <strong>(ne pas choisir une version supérieure)</strong></li>
+                </ul>
+              </li>
+              <li>Ouvrez <span class="ui">Change default execution role</span> → <span class="ui">Use an existing role</span> → sélectionnez <span class="val-pill">LabTextToSpeechRole</span>, puis créez la fonction.</li>
+              <li>Supprimez le code présent dans l'éditeur et collez le code suivant, puis cliquez sur <span class="ui">Deploy</span>&nbsp;:</li>
+            </ol>
+
+            <div class="code-block code-collapse open" id="code-newpost">
+              <div class="code-head toggle" role="button" tabindex="0" aria-expanded="true" aria-controls="code-newpost">
+                <span class="lang">Python · PostReader_NewPost</span>
+                <span class="right">
+                  <button class="code-copy" type="button">Copier</button>
+                  <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+                </span>
+              </div>
+              <pre><code><span class="tok-kw">import</span> boto3
+<span class="tok-kw">import</span> os
+<span class="tok-kw">import</span> uuid
+
+<span class="tok-kw">def</span> <span class="tok-fn">lambda_handler</span>(event, context):
+
+    recordId = <span class="tok-fn">str</span>(uuid.uuid4())
+    voice = event[<span class="tok-str">"voice"</span>]
+    text = event[<span class="tok-str">"text"</span>]
+    user = event[<span class="tok-str">"user"</span>]
+
+    <span class="tok-fn">print</span>(<span class="tok-str">'Generating new DynamoDB record, with ID: '</span> + recordId)
+    <span class="tok-fn">print</span>(<span class="tok-str">'Input Text: '</span> + text)
+    <span class="tok-fn">print</span>(<span class="tok-str">'Selected voice: '</span> + voice)
+    <span class="tok-fn">print</span>(<span class="tok-str">'User: '</span> + user)
+
+    <span class="tok-com">#Creating new record in DynamoDB table</span>
+    dynamodb = boto3.resource(<span class="tok-str">'dynamodb'</span>)
+    table = dynamodb.Table(os.environ[<span class="tok-str">'DB_TABLE_NAME'</span>])
+    table.put_item(
+        Item={
+            <span class="tok-str">'id'</span> : recordId,
+            <span class="tok-str">'text'</span> : text,
+            <span class="tok-str">'voice'</span> : voice,
+            <span class="tok-str">'status'</span> : <span class="tok-str">'PROCESSING'</span>,
+            <span class="tok-str">'user'</span> : user
+        }
+    )
+
+    <span class="tok-com">#Sending notification about new post to SNS</span>
+    client = boto3.client(<span class="tok-str">'sns'</span>)
+    client.publish(
+        TopicArn = os.environ[<span class="tok-str">'SNS_TOPIC'</span>],
+        Message = recordId
+    )
+
+    <span class="tok-kw">return</span> recordId</code></pre>
+            </div>
+
+            <ol class="steps" start="5">
+              <li>Onglet <span class="ui">Configuration</span> → <span class="ui">Environment variables</span> → <span class="ui">Edit</span> → <span class="ui">Add environment variable</span>. Créez les deux variables&nbsp;:</li>
+            </ol>
+            <div class="envtable">
+              <div class="row"><div class="k">DB_TABLE_NAME</div><div class="v"><span class="copyable" data-copy="TextToSpeech-posts">TextToSpeech-posts</span></div></div>
+              <div class="row"><div class="k">SNS_TOPIC</div><div class="v"><span class="val-pill">arn:aws:sns:…</span> (ARN du topic créé à l'étape 3)</div></div>
+            </div>
+
+            <div class="info-box warning">
+              <span class="icon-bubble">!</span>
+              <div class="body">
+                <p><span class="label">Attention :</span> le nom de la table doit être <strong>exactement</strong> celui de la table créée (respect des majuscules / minuscules), sans espace avant ni après la valeur saisie.</p>
+              </div>
+            </div>
+
+            <figure class="step-figure">
+              <img src="images/image20.png" alt="Édition des variables d'environnement de la fonction Lambda">
+              <figcaption>Définition des variables d'environnement <span class="val-pill">DB_TABLE_NAME</span> et <span class="val-pill">SNS_TOPIC</span>.</figcaption>
+            </figure>
+
+            <ol class="steps" start="6">
+              <li>Onglet <span class="ui">Test</span> → <em>Name</em>&nbsp;: <span class="copyable" data-copy="TextToSpeech">TextToSpeech</span>, et dans l'éditeur&nbsp;:</li>
+            </ol>
+            <div class="code-block">
+              <div class="code-head"><span class="lang">JSON · événement de test</span><button class="code-copy" type="button">Copier</button></div>
+              <pre><code>{
+  <span class="tok-str">"voice"</span>: <span class="tok-str">"Joanna"</span>,
+  <span class="tok-str">"text"</span>: <span class="tok-str">"This is working!"</span>,
+  <span class="tok-str">"user"</span>: <span class="tok-str">"XXX"</span>
+}</code></pre>
+            </div>
+            <div class="info-box info">
+              <span class="icon-bubble">i</span>
+              <div class="body"><p>Remplacez <span class="val-pill">XXX</span> par la première lettre de votre prénom suivie de votre nom (ex. <span class="val-pill">jsmith</span>). Cliquez sur <span class="ui">Save</span> puis <span class="ui">Test</span>.</p></div>
+            </div>
+
+            <figure class="step-figure">
+              <img src="images/image18.png" alt="Exemple d'erreur d'exécution de la fonction Lambda">
+              <figcaption>En cas d'erreur, la cause est détaillée (ex. nom de table incorrect).</figcaption>
+            </figure>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Fonction « New Posts » opérationnelle.</strong> Elle écrit dans <span class="aws-svc">DynamoDB</span> et notifie <span class="aws-svc">SNS</span>.</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- STEP 5 — Lambda Convert to Audio                             -->
+      <!-- ============================================================ -->
+      <section id="step-5" aria-labelledby="step-5-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">5</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 5</p>
+              <h3 id="step-5-title">Fonction <span class="aws-svc">Lambda</span> « Convert to Audio »</h3>
+              <div class="svc-chips">
+                <span class="svc-chip"><span class="dot dot-compute"></span>AWS Lambda</span>
+                <span class="svc-chip"><span class="dot dot-ml"></span>Amazon Polly</span>
+                <span class="svc-chip"><span class="dot dot-storage"></span>S3</span>
+                <span class="svc-chip"><span class="dot dot-appint"></span>SNS</span>
+              </div>
+            </div>
+            <button class="complete-toggle" data-task="5" type="button" aria-label="Marquer l'étape 5 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Cette fonction convertit le texte stocké dans <span class="aws-svc">DynamoDB</span> en fichier audio <em>MP3</em> grâce à
+              <span class="aws-svc">Amazon Polly</span>. Elle est déclenchée par un <em>trigger</em> <span class="aws-svc">SNS</span>&nbsp;: chaque nouveau message reçu
+              exécute <span class="val-pill">ConvertToAudio</span>.
+            </p>
+
+            <div class="info-box info">
+              <span class="icon-bubble">i</span>
+              <div class="body">
+                <p><span class="label">Ce que fait la fonction :</span> récupère le <em>post ID</em> depuis l'événement <span class="aws-svc">SNS</span> → lit les infos dans <span class="aws-svc">DynamoDB</span> → convertit le texte en flux audio via <span class="aws-svc">Polly</span> → dépose le <em>MP3</em> dans <span class="aws-svc">S3</span> → met à jour <span class="aws-svc">DynamoDB</span> (status <em>UPDATED</em> + <em>url</em>).</p>
+              </div>
+            </div>
+
+            <p class="subtasks-title">Procédure</p>
+            <ol class="steps">
+              <li>Recherchez et ouvrez le service <span class="ui">Lambda</span>, puis cliquez sur la fonction existante <span class="val-pill">PostReader_ConvertToAudio</span>.</li>
+              <li>Le code de la fonction est le suivant (déjà en place)&nbsp;:</li>
+            </ol>
+
+            <div class="code-block code-collapse" id="code-convert">
+              <div class="code-head toggle" role="button" tabindex="0" aria-expanded="false" aria-controls="code-convert">
+                <span class="lang">Python · PostReader_ConvertToAudio</span>
+                <span class="right">
+                  <span class="meta">cliquez pour afficher</span>
+                  <button class="code-copy" type="button">Copier</button>
+                  <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+                </span>
+              </div>
+              <pre><code><span class="tok-kw">import</span> boto3
+<span class="tok-kw">import</span> os
+<span class="tok-kw">from</span> contextlib <span class="tok-kw">import</span> closing
+<span class="tok-kw">from</span> boto3.dynamodb.conditions <span class="tok-kw">import</span> Key, Attr
+
+<span class="tok-kw">def</span> <span class="tok-fn">lambda_handler</span>(event, context):
+
+    postId = event[<span class="tok-str">"Records"</span>][<span class="tok-num">0</span>][<span class="tok-str">"Sns"</span>][<span class="tok-str">"Message"</span>]
+
+    <span class="tok-fn">print</span>(<span class="tok-str">"Text to Speech function. Post ID in DynamoDB: "</span> + postId)
+
+    <span class="tok-com">#Retrieving information about the post from DynamoDB table</span>
+    dynamodb = boto3.resource(<span class="tok-str">'dynamodb'</span>)
+    table = dynamodb.Table(os.environ[<span class="tok-str">'DB_TABLE_NAME'</span>])
+    postItem = table.query(
+        KeyConditionExpression=Key(<span class="tok-str">'id'</span>).eq(postId)
+    )
+
+    text = postItem[<span class="tok-str">"Items"</span>][<span class="tok-num">0</span>][<span class="tok-str">"text"</span>]
+    voice = postItem[<span class="tok-str">"Items"</span>][<span class="tok-num">0</span>][<span class="tok-str">"voice"</span>]
+    user = postItem[<span class="tok-str">"Items"</span>][<span class="tok-num">0</span>][<span class="tok-str">"user"</span>]
+
+    rest = text
+
+    <span class="tok-com"># Polly handles ~1500 chars per call, so we split into ~1000-char blocks.</span>
+    textBlocks = []
+    <span class="tok-kw">while</span> (<span class="tok-fn">len</span>(rest) &gt; <span class="tok-num">1100</span>):
+        begin = <span class="tok-num">0</span>
+        end = rest.find(<span class="tok-str">"."</span>, <span class="tok-num">1000</span>)
+
+        <span class="tok-kw">if</span> (end == -<span class="tok-num">1</span>):
+            end = rest.find(<span class="tok-str">" "</span>, <span class="tok-num">1000</span>)
+
+        textBlock = rest[begin:end]
+        rest = rest[end:]
+        textBlocks.append(textBlock)
+    textBlocks.append(rest)
+
+    <span class="tok-com">#For each block, invoke Polly, which transforms text into audio</span>
+    polly = boto3.client(<span class="tok-str">'polly'</span>)
+    <span class="tok-kw">for</span> textBlock <span class="tok-kw">in</span> textBlocks:
+        response = polly.synthesize_speech(
+            OutputFormat=<span class="tok-str">'mp3'</span>,
+            Text = textBlock,
+            VoiceId = voice
+        )
+
+        <span class="tok-com">#Save the audio stream to Lambda's /tmp directory</span>
+        <span class="tok-kw">if</span> <span class="tok-str">"AudioStream"</span> <span class="tok-kw">in</span> response:
+            <span class="tok-kw">with</span> closing(response[<span class="tok-str">"AudioStream"</span>]) <span class="tok-kw">as</span> stream:
+                output = os.path.join(<span class="tok-str">"/tmp/"</span>, postId)
+                <span class="tok-kw">with</span> <span class="tok-fn">open</span>(output, <span class="tok-str">"wb"</span>) <span class="tok-kw">as</span> file:
+                    file.write(stream.read())
+
+    s3 = boto3.client(<span class="tok-str">'s3'</span>)
+    s3.upload_file(<span class="tok-str">'/tmp/'</span> + postId,
+      os.environ[<span class="tok-str">'BUCKET_NAME'</span>],
+      user + <span class="tok-str">"/"</span> + postId + <span class="tok-str">".mp3"</span>)
+    s3.put_object_acl(ACL=<span class="tok-str">'public-read'</span>,
+      Bucket=os.environ[<span class="tok-str">'BUCKET_NAME'</span>],
+      Key= user + <span class="tok-str">"/"</span> + postId + <span class="tok-str">".mp3"</span>)
+
+    location = s3.get_bucket_location(Bucket=os.environ[<span class="tok-str">'BUCKET_NAME'</span>])
+    region = location[<span class="tok-str">'LocationConstraint'</span>]
+
+    <span class="tok-kw">if</span> region <span class="tok-kw">is</span> <span class="tok-kw">None</span>:
+        url_begining = <span class="tok-str">"https://s3.amazonaws.com/"</span>
+    <span class="tok-kw">else</span>:
+        url_begining = <span class="tok-str">"https://s3-"</span> + <span class="tok-fn">str</span>(region) + <span class="tok-str">".amazonaws.com/"</span>
+
+    url = url_begining \
+            + <span class="tok-fn">str</span>(os.environ[<span class="tok-str">'BUCKET_NAME'</span>]) \
+            + <span class="tok-str">"/"</span> + user + <span class="tok-str">"/"</span> \
+            + <span class="tok-fn">str</span>(postId) \
+            + <span class="tok-str">".mp3"</span>
+
+    <span class="tok-com">#Updating the item in DynamoDB</span>
+    response = table.update_item(
+        Key={<span class="tok-str">'id'</span>:postId},
+          UpdateExpression=
+            <span class="tok-str">"SET #statusAtt = :statusValue, #urlAtt = :urlValue"</span>,
+          ExpressionAttributeValues=
+            {<span class="tok-str">':statusValue'</span>: <span class="tok-str">'UPDATED'</span>, <span class="tok-str">':urlValue'</span>: url},
+        ExpressionAttributeNames=
+          {<span class="tok-str">'#statusAtt'</span>: <span class="tok-str">'status'</span>, <span class="tok-str">'#urlAtt'</span>: <span class="tok-str">'url'</span>},
+    )
+
+    <span class="tok-kw">return</span></code></pre>
+            </div>
+
+            <ol class="steps" start="3">
+              <li>Onglet <span class="ui">Configuration</span> → <span class="ui">Environment variables</span>. Vérifiez les deux variables&nbsp;:</li>
+            </ol>
+            <div class="envtable">
+              <div class="row"><div class="k">DB_TABLE_NAME</div><div class="v"><span class="copyable" data-copy="TextToSpeech-posts">TextToSpeech-posts</span></div></div>
+              <div class="row"><div class="k">BUCKET_NAME</div><div class="v"><span class="copyable" data-copy="texttospeech-audiopost">texttospeech-audiopost</span></div></div>
+            </div>
+            <ol class="steps" start="4">
+              <li><strong>Trigger SNS&nbsp;:</strong> dans le menu de gauche, cliquez sur <span class="ui">Triggers</span> et vérifiez qu'un <em>trigger</em> est bien associé au topic <span class="val-pill">TextToSpeech-new_posts</span>.</li>
+            </ol>
+
+            <figure class="step-figure">
+              <img src="images/image22.png" alt="Trigger SNS associé à la fonction ConvertToAudio">
+              <figcaption>Le <em>trigger</em> <span class="aws-svc">SNS</span> qui déclenche <span class="val-pill">ConvertToAudio</span>.</figcaption>
+            </figure>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Conversion prête.</strong> Chaque notification <span class="aws-svc">SNS</span> déclenche la synthèse vocale via <span class="aws-svc">Polly</span>.</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- STEP 6 — Lambda Get Posts                                    -->
+      <!-- ============================================================ -->
+      <section id="step-6" aria-labelledby="step-6-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">6</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 6</p>
+              <h3 id="step-6-title">Fonction <span class="aws-svc">Lambda</span> « Get Posts »</h3>
+              <div class="svc-chips">
+                <span class="svc-chip"><span class="dot dot-compute"></span>AWS Lambda</span>
+                <span class="svc-chip"><span class="dot dot-database"></span>DynamoDB</span>
+              </div>
+            </div>
+            <button class="complete-toggle" data-task="6" type="button" aria-label="Marquer l'étape 6 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Cette troisième fonction <span class="aws-svc">Lambda</span> récupère les informations des demandes stockées dans <span class="aws-svc">DynamoDB</span>&nbsp;:
+              soit un post précis par son <em>id</em>, soit tous les posts d'un utilisateur via l'index <span class="val-pill">user-index</span>.
+            </p>
+
+            <p class="subtasks-title">Procédure</p>
+            <ol class="steps">
+              <li>Recherchez et ouvrez le service <span class="ui">Lambda</span>, puis cliquez sur la fonction existante <span class="val-pill">PostReader_GetPost</span>.</li>
+              <li>Le code de la fonction est le suivant&nbsp;:</li>
+            </ol>
+
+            <div class="code-block code-collapse" id="code-getpost">
+              <div class="code-head toggle" role="button" tabindex="0" aria-expanded="false" aria-controls="code-getpost">
+                <span class="lang">Python · PostReader_GetPost</span>
+                <span class="right">
+                  <span class="meta">cliquez pour afficher</span>
+                  <button class="code-copy" type="button">Copier</button>
+                  <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+                </span>
+              </div>
+              <pre><code><span class="tok-kw">import</span> boto3
+<span class="tok-kw">import</span> os
+<span class="tok-kw">from</span> boto3.dynamodb.conditions <span class="tok-kw">import</span> Key, Attr
+
+<span class="tok-kw">def</span> <span class="tok-fn">lambda_handler</span>(event, context):
+
+    postId = event[<span class="tok-str">"postId"</span>]
+    user = event[<span class="tok-str">"user"</span>]
+
+    dynamodb = boto3.resource(<span class="tok-str">'dynamodb'</span>)
+    table = dynamodb.Table(os.environ[<span class="tok-str">'DB_TABLE_NAME'</span>])
+
+    <span class="tok-kw">if</span> postId==<span class="tok-str">"*"</span>:
+        items = table.query(
+            IndexName=<span class="tok-str">'user-index'</span>,
+            KeyConditionExpression=Key(<span class="tok-str">'user'</span>).eq(user)
+        )
+    <span class="tok-kw">else</span>:
+        items = table.query(
+            KeyConditionExpression=Key(<span class="tok-str">'id'</span>).eq(postId)
+        )
+
+    <span class="tok-kw">return</span> items[<span class="tok-str">"Items"</span>]</code></pre>
+            </div>
+
+            <ol class="steps" start="3">
+              <li>Onglet <span class="ui">Configuration</span> → <span class="ui">Environment variables</span>. Vérifiez la variable&nbsp;:</li>
+            </ol>
+            <div class="envtable">
+              <div class="row"><div class="k">DB_TABLE_NAME</div><div class="v"><span class="copyable" data-copy="TextToSpeech-posts">TextToSpeech-posts</span></div></div>
+            </div>
+            <ol class="steps" start="4">
+              <li>Onglet <span class="ui">Test</span> → <em>Name</em>&nbsp;: <span class="copyable" data-copy="GetPost">GetPost</span>, et dans l'éditeur&nbsp;:</li>
+            </ol>
+            <div class="code-block">
+              <div class="code-head"><span class="lang">JSON · événement de test</span><button class="code-copy" type="button">Copier</button></div>
+              <pre><code>{
+  <span class="tok-str">"postId"</span>: <span class="tok-str">"*"</span>,
+  <span class="tok-str">"user"</span>: <span class="tok-str">"XXX"</span>
+}</code></pre>
+            </div>
+            <div class="info-box info">
+              <span class="icon-bubble">i</span>
+              <div class="body"><p>Remplacez <span class="val-pill">XXX</span> par votre identifiant (ex. <span class="val-pill">jsmith</span>). Cliquez sur <span class="ui">Save</span> puis <span class="ui">Test</span>.</p></div>
+            </div>
+
+            <figure class="step-figure">
+              <img src="images/image23.png" alt="Résultat de la fonction GetPost listant les posts">
+              <figcaption>Exécution réussie — la liste des posts de l'utilisateur est retournée.</figcaption>
+            </figure>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Récupération prête.</strong> La fonction <span class="val-pill">GetPost</span> interroge <span class="aws-svc">DynamoDB</span>.</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- STEP 7 — API Gateway                                         -->
+      <!-- ============================================================ -->
+      <section id="step-7" aria-labelledby="step-7-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">7</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 7</p>
+              <h3 id="step-7-title">Exposition des <span class="aws-svc">Lambda</span> via <span class="aws-svc">API Gateway</span></h3>
+              <div class="svc-chips">
+                <span class="svc-chip"><span class="dot dot-network"></span>Amazon API Gateway</span>
+                <span class="svc-chip"><span class="dot dot-compute"></span>AWS Lambda</span>
+              </div>
+            </div>
+            <button class="complete-toggle" data-task="7" type="button" aria-label="Marquer l'étape 7 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Dernière brique côté back-end&nbsp;: exposer les fonctions <span class="aws-svc">Lambda</span> en tant que service web via
+              <span class="aws-svc">Amazon API Gateway</span>, pour les appeler en <em>HTTP</em>. Vous créez une méthode <span class="val-pill">POST</span>
+              (vers <span class="val-pill">NewPost</span>) et une méthode <span class="val-pill">GET</span> (vers <span class="val-pill">GetPost</span>).
+            </p>
+
+            <h4 class="step-group-title">Création de la ressource</h4>
+            <ol class="steps">
+              <li>Recherchez et ouvrez le service <span class="ui">API Gateway</span>, puis cliquez sur l'API <span class="val-pill">PostReaderAPI</span>.</li>
+              <li>Cliquez sur <span class="ui">Create Resource</span>.</li>
+              <li>Dans <em>Resource Name</em>, saisissez votre identifiant (<em>première lettre du prénom + nom</em>, ex. <span class="val-pill">jsmith</span>).</li>
+              <li>Vérifiez que la ressource est à la racine et que le <em>Resource Path</em> est bien <span class="val-pill">/xxx</span>, puis créez-la.</li>
+            </ol>
+
+            <figure class="step-figure">
+              <img src="images/image25.png" alt="Création d'une ressource dans API Gateway">
+              <figcaption>Création de la ressource à votre nom dans <span class="aws-svc">API Gateway</span>.</figcaption>
+            </figure>
+
+            <h4 class="step-group-title">Méthode POST → <span class="val-pill">NewPost</span></h4>
+            <ol class="steps">
+              <li>Sélectionnez votre ressource, cliquez sur <span class="ui">Create Method</span>.</li>
+              <li>Choisissez la méthode <span class="val-pill">POST</span> et validez.</li>
+              <li>Renseignez&nbsp;:
+                <ul>
+                  <li><em>Integration type</em>&nbsp;: <span class="ui">Lambda function</span></li>
+                  <li><em>Lambda Region</em>&nbsp;: <span class="val-pill">eu-west-3</span> (ou votre région)</li>
+                  <li><em>Lambda Function</em>&nbsp;: <span class="val-pill">XXX-PostReader_NewPost</span> (ou la fonction existante <span class="val-pill">PostReader_NewPost</span>)</li>
+                </ul>
+              </li>
+              <li>Créez la méthode et validez le message en cliquant sur <span class="ui">OK</span>.</li>
+            </ol>
+
+            <figure class="step-figure">
+              <img src="images/image28.png" alt="Configuration de l'intégration Lambda pour la méthode POST">
+              <figcaption>Intégration <span class="aws-svc">Lambda</span> de la méthode <span class="val-pill">POST</span>.</figcaption>
+            </figure>
+
+            <h4 class="step-group-title">Activer CORS</h4>
+            <ol class="steps">
+              <li>Sélectionnez la méthode <span class="val-pill">POST</span> créée, cliquez sur <span class="ui">Enable CORS</span> et validez.</li>
+              <li>Une nouvelle méthode <span class="val-pill">OPTIONS</span> apparaît alors dans votre ressource.</li>
+            </ol>
+
+            <figure class="step-figure">
+              <img src="images/image32.png" alt="Méthode OPTIONS créée après activation de CORS">
+              <figcaption>La méthode <span class="val-pill">OPTIONS</span> ajoutée automatiquement par <em>CORS</em>.</figcaption>
+            </figure>
+
+            <div class="info-box info">
+              <span class="icon-bubble">i</span>
+              <div class="body"><p><span class="label">Méthode GET :</span> répétez la même procédure pour créer une méthode <span class="val-pill">GET</span> pointant vers <span class="val-pill">PostReader_GetPost</span>, puis activez <em>CORS</em>.</p></div>
+            </div>
+
+            <h4 class="step-group-title">Déployer l'API</h4>
+            <ol class="steps">
+              <li>Cliquez sur <span class="ui">Deploy API</span>.</li>
+              <li><em>Deployment Stage</em>&nbsp;: <span class="copyable" data-copy="Lab-TextToSpeech">Lab-TextToSpeech</span>, puis cliquez sur <span class="ui">Deploy</span>.</li>
+              <li><strong>Copiez l'URL d'<em>invoke</em></strong> obtenue — vous en aurez besoin à l'étape suivante.</li>
+            </ol>
+
+            <figure class="step-figure">
+              <img src="images/image34.png" alt="URL d'invocation de l'API après déploiement">
+              <figcaption>L'URL d'<em>invoke</em> de l'API déployée, à copier.</figcaption>
+            </figure>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>API déployée.</strong> Vos fonctions <span class="aws-svc">Lambda</span> sont exposées en <em>HTTP</em> via <span class="aws-svc">API Gateway</span>.</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- STEP 8 — Web interface                                       -->
+      <!-- ============================================================ -->
+      <section id="step-8" aria-labelledby="step-8-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">8</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 8</p>
+              <h3 id="step-8-title">Création de l'interface Web</h3>
+              <div class="svc-chips"><span class="svc-chip"><span class="dot" style="background:#5A6B87"></span>HTML · CSS · JavaScript</span></div>
+            </div>
+            <button class="complete-toggle" data-task="8" type="button" aria-label="Marquer l'étape 8 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              L'application est exposée comme API. Pour la tester confortablement, vous utilisez une petite page web statique qui
+              appelle l'API en <em>JavaScript</em> et fournit toute l'interface de synthèse vocale.
+            </p>
+
+            <div class="info-box info">
+              <span class="icon-bubble">i</span>
+              <div class="body"><p>Le package contient trois fichiers&nbsp;: <span class="val-pill">index.html</span>, <span class="val-pill">styles.css</span> et <span class="val-pill">scripts.js</span>.</p></div>
+            </div>
+
+            <div class="info-box tip">
+              <span class="icon-bubble">⬇</span>
+              <div class="body">
+                <p><span class="label">Téléchargement :</span> récupérez le package directement depuis ce dépôt&nbsp;: <a href="TextToSpeech.zip" download><strong>TextToSpeech.zip</strong></a>.</p>
+              </div>
+            </div>
+
+            <p class="subtasks-title">Procédure</p>
+            <ol class="steps">
+              <li>Téléchargez puis extrayez <a href="TextToSpeech.zip" download><span class="val-pill">TextToSpeech.zip</span></a>, et ouvrez <span class="val-pill">scripts.js</span> dans un éditeur de texte.</li>
+              <li>Si vous avez utilisé l'API prédéfinie <span class="val-pill">PostReader_NewPost</span>, rien à modifier&nbsp;: ouvrez directement <span class="val-pill">index.html</span>.</li>
+              <li>Si vous avez créé votre propre API, mettez à jour la <strong>première ligne</strong> avec l'URL d'<em>invoke</em> obtenue à l'étape 7&nbsp;:</li>
+            </ol>
+
+            <div class="code-block">
+              <div class="code-head"><span class="lang">JavaScript · scripts.js</span><button class="code-copy" type="button">Copier</button></div>
+              <pre><code><span class="tok-kw">var</span> API_ENDPOINT = <span class="tok-str">"https://90f7ouaeac.execute-api.eu-west-3.amazonaws.com/Lab-TextToSpeech"</span>
+<span class="tok-kw">var</span> USER = <span class="tok-str">"jsmith"</span></code></pre>
+            </div>
+
+            <div class="info-box warning">
+              <span class="icon-bubble">!</span>
+              <div class="body">
+                <p><span class="label">Attention au copier-coller :</span> aucune espace avant ou après l'URL entre les guillemets. La variable <span class="val-pill">USER</span> doit être identique à l'identifiant utilisé pour déployer votre méthode <span class="val-pill">POST</span> (ex. <span class="val-pill">jsmith</span>).</p>
+              </div>
+            </div>
+
+            <ol class="steps" start="4">
+              <li>Sauvegardez le fichier, puis ouvrez <span class="val-pill">index.html</span> dans votre navigateur.</li>
+              <li>Écrivez un texte (dans la langue de la voix choisie) et cliquez sur <span class="ui">Convert&nbsp;!</span>. Selon la taille, la conversion prend quelques secondes à quelques minutes.</li>
+              <li>Pour afficher vos messages, saisissez <span class="val-pill">*</span> (tous) ou un <em>ID</em> précis dans la zone de recherche, puis <span class="ui">Search</span>.</li>
+              <li>Cliquez sur l'icône <span class="ui">Play</span> ▶ pour écouter le <em>MP3</em>.</li>
+            </ol>
+
+            <figure class="step-figure">
+              <img src="images/image36.png" alt="Page web de l'application Text-to-Speech">
+              <figcaption>L'interface web de l'application <em>Text-to-Speech</em>.</figcaption>
+            </figure>
+            <figure class="step-figure">
+              <img src="images/image37.png" alt="Liste des messages convertis avec lecteur audio">
+              <figcaption>Les messages convertis, avec lecteur audio intégré.</figcaption>
+            </figure>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Application complète&nbsp;!</strong> Vous convertissez du texte en audio de bout en bout.</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- STEP 9 — Verify in DynamoDB & S3                             -->
+      <!-- ============================================================ -->
+      <section id="step-9" aria-labelledby="step-9-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">9</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 9</p>
+              <h3 id="step-9-title">Vérification dans <span class="aws-svc">DynamoDB</span> &amp; <span class="aws-svc">S3</span></h3>
+              <div class="svc-chips">
+                <span class="svc-chip"><span class="dot dot-database"></span>DynamoDB</span>
+                <span class="svc-chip"><span class="dot dot-storage"></span>S3</span>
+              </div>
+            </div>
+            <button class="complete-toggle" data-task="9" type="button" aria-label="Marquer l'étape 9 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Vérifiez que les données circulent correctement de bout en bout en inspectant la table <span class="aws-svc">DynamoDB</span>
+              et le bucket <span class="aws-svc">S3</span>.
+            </p>
+
+            <h4 class="step-group-title">Côté <span class="aws-svc">DynamoDB</span></h4>
+            <ol class="steps">
+              <li>Ouvrez le service <span class="ui">DynamoDB</span> → <span class="ui">Tables</span> → table <span class="val-pill">TextToSpeech-posts</span>.</li>
+              <li>Cliquez sur <span class="ui">Explore table items</span> (en haut à droite).</li>
+              <li>Les messages envoyés s'affichent dans la section <span class="ui">Items returned</span>.</li>
+            </ol>
+
+            <figure class="step-figure">
+              <img src="images/image40.png" alt="Items retournés dans la table DynamoDB">
+              <figcaption>Les messages stockés dans <span class="val-pill">TextToSpeech-posts</span>.</figcaption>
+            </figure>
+
+            <h4 class="step-group-title">Côté <span class="aws-svc">S3</span></h4>
+            <ol class="steps">
+              <li>Ouvrez le service <span class="ui">S3</span> → bucket <span class="val-pill">texttospeech-audiopost</span>.</li>
+              <li>Le bucket contient un sous-répertoire par utilisateur.</li>
+              <li>Cliquez sur le répertoire correspondant à votre utilisateur pour afficher vos fichiers <em>MP3</em>.</li>
+            </ol>
+
+            <figure class="step-figure">
+              <img src="images/image41.png" alt="Sous-répertoires par utilisateur dans le bucket S3">
+              <figcaption>Un sous-répertoire par utilisateur dans le bucket.</figcaption>
+            </figure>
+            <figure class="step-figure">
+              <img src="images/image42.png" alt="Fichiers MP3 générés dans le répertoire utilisateur">
+              <figcaption>Les fichiers <em>MP3</em> générés pour votre utilisateur.</figcaption>
+            </figure>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Vérification réussie.</strong> Les données et les <em>MP3</em> sont bien persistés.</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============ CONCLUSION ============ -->
+      <section id="conclusion" aria-labelledby="conclusion-title">
+        <div class="conclusion">
+          <h2 id="conclusion-title"><span class="accent">Bravo&nbsp;!</span> Vous avez terminé ce lab</h2>
+          <p class="conclusion-lead">Vous avez construit une application capable de convertir du texte en audio dans des dizaines de langues, avec différentes voix — entièrement <em>serverless</em>.</p>
+          <ul class="conclusion-list">
+            <li><span class="check">✓</span><span>Mis en œuvre une chaîne <em>serverless</em> complète avec <span class="aws-svc">Lambda</span>, <span class="aws-svc">API Gateway</span>, <span class="aws-svc">DynamoDB</span>, <span class="aws-svc">SNS</span>, <span class="aws-svc">S3</span> et <span class="aws-svc">Polly</span>.</span></li>
+            <li><span class="check">✓</span><span>Découplé les traitements grâce à des appels <strong>asynchrones</strong> via <span class="aws-svc">SNS</span>.</span></li>
+            <li><span class="check">✓</span><span>Exposé des fonctions <span class="aws-svc">Lambda</span> en API <em>REST</em> et connecté une interface web.</span></li>
+            <li><span class="check">✓</span><span>Livré une application <strong>hautement disponible</strong> et <strong>scalable</strong>, sans infrastructure à maintenir ni à patcher.</span></li>
+          </ul>
+          <p class="conclusion-lead" style="margin-top:24px;font-size:15px">
+            Au-delà de l'exemple, cette API peut servir à de nombreux usages&nbsp;: conversion de texte sur des sites web, ajout de
+            fonctionnalités vocales dans des applications… <span class="aws-svc">Lambda</span>, <span class="aws-svc">API Gateway</span>, <span class="aws-svc">S3</span> et
+            <span class="aws-svc">DynamoDB</span> reposent par défaut sur plusieurs <em>Availability Zones</em>.
+          </p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="site-footer">
+    <p>
+      <strong>Cloud Level 2 · Lab Grow &amp; Go</strong> ·
+      Serverless <span class="aws-svc">Text-to-Speech</span> avec <span class="aws-svc">Amazon Polly</span> ·
+      v1.4 · © <span class="year">2026</span> onepoint
+    </p>
+    <p style="margin-top:6px;font-size:13px;opacity:0.75">
+      Package web&nbsp;: <a href="TextToSpeech.zip" download>TextToSpeech.zip</a>
+    </p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

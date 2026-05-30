@@ -1,2 +1,25 @@
-*.*
+# Source documents (not needed in the public repo — websites replace them)
+*.docx
+*.xlsx
+*.pdf
+
+# Old/backup files
 *old*
+*~old*
+
+# Editor / IDE
+.vscode/
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Temp extraction artifacts
+_extracted.json
+_plain.txt
+images_raw/
