@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Atelier AWS — Operation Kaiju Watch : pipeline de données analytique avec Kinesis, Glue, S3, Athena, Redshift et Lake Formation. Préparation à l'examen AWS Certified Data Engineer Associate (DEA-C01).">
+  <title>Atelier AWS — Operation Kaiju Watch (Data Engineer)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23232f3e'/%3E%3Ctext x='50' y='68' font-family='Inter,sans-serif' font-size='52' font-weight='700' text-anchor='middle' fill='%238C4FFF'%3E%E2%96%B2%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+
+  <!-- ============ HEADER ============ -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">
+        <button class="menu-toggle" aria-label="Ouvrir le menu" title="Menu">☰</button>
+        <div class="brand-mark">KW</div>
+        <div class="brand-text">
+          <span class="brand-title">Operation Kaiju Watch</span>
+          <span class="brand-sub">Data Engineer Lab · Kinesis · Glue · Redshift · Athena · Lake Formation</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="progress-pill" title="Votre progression dans l'atelier">
+          <span class="progress-text">0/6 étapes</span>
+          <span class="progress-bar"><span class="progress-fill" style="width:0%"></span></span>
+        </div>
+        <button class="btn-reset" type="button" title="Réinitialiser la progression">Réinitialiser</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- ============ SIDE NAV ============ -->
+    <nav class="side-nav" aria-label="Sommaire de l'atelier">
+      <p class="nav-title">Atelier</p>
+      <ul class="nav-list">
+        <li><a href="#scenario"><span class="nav-num"><span>i</span></span> Scénario</a></li>
+        <li><a href="#objectifs"><span class="nav-num"><span>O</span></span> Objectifs &amp; examen</a></li>
+        <li><a href="#architecture"><span class="nav-num"><span>A</span></span> Architecture</a></li>
+        <li><a href="#pre-flight"><span class="nav-num"><span>P</span></span> Avant de commencer</a></li>
+      </ul>
+
+      <p class="nav-title">Pipeline (90 min)</p>
+      <ul class="nav-list">
+        <li><a href="#task-1" data-task="1"><span class="nav-num"><span>1</span></span> Ingestion (Kinesis)</a></li>
+        <li><a href="#task-2" data-task="2"><span class="nav-num"><span>2</span></span> Catalogue (Glue Crawler)</a></li>
+        <li><a href="#task-3" data-task="3"><span class="nav-num"><span>3</span></span> Transformation (Glue ETL)</a></li>
+        <li><a href="#task-4" data-task="4"><span class="nav-num"><span>4</span></span> Exploration (Athena)</a></li>
+        <li><a href="#task-5" data-task="5"><span class="nav-num"><span>5</span></span> Warehouse (Redshift)</a></li>
+        <li><a href="#task-6" data-task="6"><span class="nav-num"><span>6</span></span> Gouvernance (Lake Formation)</a></li>
+      </ul>
+
+      <p class="nav-title">Fin</p>
+      <ul class="nav-list">
+        <li><a href="#report"><span class="nav-num"><span>★</span></span> Titan Threat Report</a></li>
+      </ul>
+    </nav>
+
+    <!-- ============ MAIN ============ -->
+    <main class="main">
+
+      <!-- ============ HERO ============ -->
+      <section class="hero" id="top" aria-labelledby="hero-title">
+        <span class="hero-eyebrow">Data Engineer · DEA-C01 prep · ⏱ 90 min</span>
+        <h1 id="hero-title">Operation <span class="accent">Kaiju Watch</span></h1>
+        <p class="hero-lead">
+          Un Titan de Catégorie&nbsp;3 remonte sous le Pacifique. Trois flux de données bruts affluent, mais rien
+          n'est connecté. Construisez un <strong>pipeline analytique de bout en bout</strong> —
+          <span class="aws-svc">Kinesis</span> → <span class="aws-svc">Glue</span> → <span class="aws-svc">S3</span> →
+          <span class="aws-svc">Athena</span> → <span class="aws-svc">Redshift</span>, gouverné par
+          <span class="aws-svc">Lake Formation</span> — et produisez le <strong>Titan Threat Report</strong> avant que le
+          Conseil de Sécurité ne se réunisse.
+        </p>
+        <div class="hero-meta">
+          <span class="hero-meta-item"><span class="icon">⏱</span> 90 minutes chrono</span>
+          <span class="hero-meta-item"><span class="icon">🎯</span> AWS Certified Data Engineer Associate</span>
+          <span class="hero-meta-item"><span class="icon">🗄️</span> 7 services data</span>
+          <span class="hero-meta-item"><span class="icon">🇫🇷</span> Langue : Français</span>
+        </div>
+      </section>
+
+      <!-- ============ SCENARIO ============ -->
+      <section id="scenario" aria-labelledby="scenario-title">
+        <header class="section-header">
+          <p class="section-eyebrow">Mise en situation</p>
+          <h2 class="section-title" id="scenario-title">Scénario de l'atelier</h2>
+          <p class="section-lead">Le compte à rebours a commencé. Comprendre la mission avant de plonger dans la console.</p>
+        </header>
+
+        <div class="card scenario-card">
+          <p>
+            Vous êtes le data engineer de garde au <span class="company">G.T.R.N. — Global Titan Response Network</span>,
+            l'agence secrète qui traque les monstres géants. Un <strong>Titan de Catégorie&nbsp;3</strong> se déplace sous
+            le Pacifique&nbsp;: les capteurs sismiques s'affolent, les signalements civils affluent, et les satellites
+            détectent des signatures thermiques anormales.
+          </p>
+          <p>
+            Le <strong>Conseil de Sécurité de l'ONU</strong> se réunit dans <strong>90&nbsp;minutes</strong> et exige un
+            seul livrable&nbsp;: le <strong>Titan Threat Report</strong>, un classement des zones côtières par niveau de
+            menace, croisé avec la <em>capacité d'évacuation</em> de chaque ville.
+          </p>
+          <p>
+            Il n'existe aucun logiciel de tracking de monstres. Il y a juste vous, un déluge de données brutes, et AWS.
+            Le Titan ne surgit pas au hasard&nbsp;: il <strong>suit les données</strong>. Là où les tremblements se
+            concentrent, où la signature thermique de l'océan grimpe, et où les signalements s'accumulent — <em>c'est là
+            qu'il émergera</em>.
+          </p>
+          <div class="info-box info" style="margin-top:18px">
+            <span class="icon-bubble">i</span>
+            <div class="body">
+              <p><span class="label">Pas de Machine Learning ici.</span> La « prédiction » est un <strong>threat score déterministe</strong> calculé en SQL — une agrégation pondérée des trois signaux par zone géographique, classée par ordre décroissant. Transparent, reproductible&nbsp;: exactement ce qu'un <em>data engineer</em> livre.</p>
+            </div>
+          </div>
+          <p style="margin-top:18px"><strong>Votre mission&nbsp;:</strong> fusionner ces flux disconnectés en un lac de données gouverné, le joindre à la capacité d'évacuation dans l'entrepôt, et exécuter la requête qui produit le classement. <strong>Terminez le pipeline — et la ville reçoit son alerte à temps.</strong></p>
+        </div>
+      </section>
+
+      <!-- ============ OBJECTIFS ============ -->
+      <section id="objectifs" aria-labelledby="obj-title">
+        <header class="section-header">
+          <p class="section-eyebrow">Préparation à l'examen</p>
+          <h2 class="section-title" id="obj-title">Objectifs &amp; couverture DEA-C01</h2>
+          <p class="section-lead">Chaque étape exerce un domaine de l'examen <strong>AWS Certified Data Engineer Associate</strong>.</p>
+        </header>
+
+        <div class="params">
+          <div class="params-row"><div class="key">Ingestion &amp; Transformation (34%)</div><div class="val">Ingérer un flux temps réel, enrichir à la volée, atterrir dans un lac — <span class="aws-svc">Kinesis</span> · <span class="aws-svc">Lambda</span> · <span class="aws-svc">S3</span></div></div>
+          <div class="params-row"><div class="key">Data Store Management (26%)</div><div class="val">Cataloguer, transformer (médaillon), charger un entrepôt, joindre une table de référence — <span class="aws-svc">Glue</span> · <span class="aws-svc">S3</span> · <span class="aws-svc">Redshift</span></div></div>
+          <div class="params-row"><div class="key">Operations &amp; Support (22%)</div><div class="val">Explorer les données ad-hoc en SQL, comprendre le coût — <span class="aws-svc">Athena</span></div></div>
+          <div class="params-row"><div class="key">Security &amp; Governance (18%)</div><div class="val">Masquage colonne sur données classifiées, moindre privilège — <span class="aws-svc">Lake Formation</span></div></div>
+        </div>
+
+        <ul class="objectives-list" style="margin-top:24px">
+          <li><span class="check">✓</span><span class="obj-text">Ingérer un flux temps réel avec <span class="aws-svc">Kinesis Data Streams</span> et l'enrichir via <span class="aws-svc">Lambda</span></span></li>
+          <li><span class="check">✓</span><span class="obj-text">Cataloguer un lac de données avec un <span class="aws-svc">Glue</span> Crawler + Data Catalog</span></li>
+          <li><span class="check">✓</span><span class="obj-text">Transformer en architecture <strong>médaillon</strong> (Bronze → Silver → Gold) avec un job <span class="aws-svc">Glue</span> ETL (Spark, Parquet)</span></li>
+          <li><span class="check">✓</span><span class="obj-text">Interroger le lac en SQL ad-hoc avec <span class="aws-svc">Athena</span></span></li>
+          <li><span class="check">✓</span><span class="obj-text">Charger et joindre dans <span class="aws-svc">Redshift</span> (Spectrum) pour produire le rapport final</span></li>
+          <li><span class="check">✓</span><span class="obj-text">Appliquer un contrôle d'accès colonne avec <span class="aws-svc">Lake Formation</span> (LF-Tags)</span></li>
+        </ul>
+      </section>
+
+      <!-- ============ ARCHITECTURE ============ -->
+      <section id="architecture" aria-labelledby="arch-title">
+        <header class="section-header">
+          <p class="section-eyebrow">Vue d'ensemble</p>
+          <h2 class="section-title" id="arch-title">Architecture du pipeline</h2>
+          <p class="section-lead">Le flux complet, des capteurs jusqu'au rapport classé. Architecture <em>lakehouse médaillon</em>.</p>
+        </header>
+
+        <figure class="architecture-frame">
+          <pre class="mermaid">
+flowchart LR
+  classDef client    fill:#5A6B87,stroke:#36465A,color:#fff;
+  classDef compute   fill:#ED7100,stroke:#b35600,color:#fff;
+  classDef analytics fill:#8C4FFF,stroke:#5b2bb0,color:#fff;
+  classDef storage   fill:#7AA116,stroke:#55710f,color:#fff;
+  classDef govern    fill:#DD344C,stroke:#a3162a,color:#fff;
+
+  SENSORS["Feeds temps réel<br/>séismes · signalements"]:::client
+  SAT["Pings thermiques<br/>satellite (batch)"]:::client
+  ANALYST["Analyste GTRN<br/>Titan Threat Report"]:::client
+
+  subgraph CLOUD["AWS Cloud"]
+    KIN["Amazon Kinesis<br/>Data Streams"]:::analytics
+    ENRICH["AWS Lambda<br/>enrichit · géotague"]:::compute
+    subgraph LAKE["Amazon S3 — Data Lake (médaillon)"]
+      BRONZE[("Bronze<br/>brut JSON")]:::storage
+      SILVER[("Silver<br/>Parquet")]:::storage
+      GOLD[("Gold<br/>threat scores")]:::storage
+    end
+    CRAWLER["AWS Glue<br/>Crawler + Catalog"]:::analytics
+    ETL["AWS Glue ETL<br/>Bronze→Silver→Gold"]:::analytics
+    ATHENA["Amazon Athena<br/>SQL ad-hoc"]:::analytics
+    REDSHIFT["Amazon Redshift<br/>jointure + rapport"]:::analytics
+    LF["AWS Lake Formation<br/>masquage classifié"]:::govern
+    EVAC[("Réf. capacité<br/>d'évacuation")]:::storage
+  end
+
+  SENSORS -->|1 stream| KIN
+  KIN -->|2 trigger| ENRICH
+  ENRICH -->|3 land brut| BRONZE
+  SAT -->|3b batch| BRONZE
+  CRAWLER -->|4 catalogue| BRONZE
+  BRONZE -->|5 ETL| ETL
+  ETL --> SILVER
+  SILVER -->|6 agrège| ETL
+  ETL --> GOLD
+  ATHENA -.->|7 requête| GOLD
+  GOLD -->|8 charge| REDSHIFT
+  EVAC -->|8b lookup| REDSHIFT
+  LF -.->|9 gouverne| GOLD
+  REDSHIFT -->|10 rapport classé| ANALYST
+          </pre>
+          <figcaption class="caption">Pipeline <em>lakehouse</em> — <span class="aws-svc">Kinesis</span> → <span class="aws-svc">Glue</span> → <span class="aws-svc">S3</span> (Bronze/Silver/Gold) → <span class="aws-svc">Athena</span> / <span class="aws-svc">Redshift</span>, gouverné par <span class="aws-svc">Lake Formation</span>.</figcaption>
+        </figure>
+
+        <div class="info-box info">
+          <span class="icon-bubble">i</span>
+          <div class="body">
+            <p><span class="label">Ce que VOUS faites :</span> brancher l'ingestion, cataloguer, transformer, explorer, charger l'entrepôt, et gouverner. Bref — <strong>tout le pipeline data</strong>.</p>
+            <p><span class="label">Ce qui est déjà en place :</span> le stream Kinesis (avec un producteur qui rejoue les données), les buckets S3 avec les données batch pré-chargées, Redshift Serverless + la table de référence, les rôles IAM — <strong>pré-déployés par le formateur</strong>. Aucune erreur de permission à craindre.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ PRE-FLIGHT ============ -->
+      <section id="pre-flight" aria-labelledby="pre-title">
+        <header class="section-header">
+          <p class="section-eyebrow">Préparation</p>
+          <h2 class="section-title" id="pre-title">Avant de commencer</h2>
+          <p class="section-lead">Quelques repères pour tenir les 90 minutes.</p>
+        </header>
+
+        <div class="info-box warning">
+          <span class="icon-bubble">!</span>
+          <div class="body">
+            <p><span class="label">Le temps presse :</span> chaque étape a un budget temps (badge en haut de chaque carte). Si une étape déborde, passez aux instructions détaillées (bouton <em>« Afficher »</em>) pour aller plus vite.</p>
+          </div>
+        </div>
+
+        <div class="info-box info">
+          <span class="icon-bubble">i</span>
+          <div class="body">
+            <p><span class="label">Région :</span> restez dans la région indiquée par le formateur pour tout l'atelier.</p>
+            <p><span class="label">Données :</span> 4 jeux corrélés sont fournis — <code>seismic_events</code> (stream), <code>thermal_pings</code> &amp; <code>civilian_sightings</code> (batch S3), <code>evacuation_capacity</code> (Redshift). L'épicentre du Titan est volontairement <strong>Tokyo Bay</strong> — si votre pipeline est correct, elle ressortira <strong>en tête</strong> du classement.</p>
+          </div>
+        </div>
+
+        <div class="info-box tip">
+          <span class="icon-bubble">★</span>
+          <div class="body">
+            <p><span class="label">Le threat score :</span> <code>0.5·avg(magnitude) + 0.3·avg(temp_delta) + 0.2·(nb_sightings / aire)</code>, agrégé par <code>grid_cell</code>. C'est le cœur analytique du lab.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 1 — Ingestion : Kinesis -> Lambda -> S3                 -->
+      <!-- ============================================================ -->
+      <section id="task-1" aria-labelledby="task-1-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">1</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 1 · ⏱ 15 min · Ingestion &amp; Transformation</p>
+              <h3 id="task-1-title">Ingestion temps réel — <span class="aws-svc">Kinesis</span> → <span class="aws-svc">Lambda</span> → <span class="aws-svc">S3</span></h3>
+              <div class="svc-chips">
+                <span class="svc-chip"><span class="dot" style="background:#8C4FFF"></span>Kinesis</span>
+                <span class="svc-chip"><span class="dot dot-compute"></span>Lambda</span>
+                <span class="svc-chip"><span class="dot dot-storage"></span>S3</span>
+              </div>
+            </div>
+            <button class="complete-toggle" data-task="1" type="button" aria-label="Marquer l'étape 1 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Connectez le flux sismique à votre lac. La Lambda <span class="val-pill">KW-Enrich</span> doit lire le stream
+              <span class="aws-svc">Kinesis</span>, <strong>géotaguer</strong> chaque événement (calcul du <code>grid_cell</code>)
+              et déposer le résultat dans <code>s3://…/bronze/seismic/</code>.
+            </p>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li>Compléter la Lambda <span class="val-pill">KW-Enrich</span> (décodage record, calcul <code>grid_cell</code>, écriture S3).</li>
+              <li>Configurer le <strong>trigger Kinesis</strong> sur la Lambda (event source mapping).</li>
+              <li>Vérifier que les fichiers atterrissent dans <code>bronze/seismic/</code>.</li>
+            </ol>
+
+            <div class="info-box warning">
+              <span class="icon-bubble">!</span>
+              <div class="body"><p><span class="label">Données classifiées :</span> les champs <code>raw_signal_strength</code> et <code>military_sensor_id</code> doivent être <strong>conservés tels quels</strong> dans Bronze — ils seront masqués plus tard (Étape 6), pas supprimés ici.</p></div>
+            </div>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Flux connecté&nbsp;!</strong> Les événements sismiques enrichis alimentent le lac en continu.</span>
+            </div>
+
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-1-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span><span class="label-text">Afficher les instructions détaillées</span><br><span class="hint">Code Lambda + config du trigger</span></span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="expand-content" id="task-1-details" role="region" aria-label="Instructions détaillées de l'étape 1">
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 1.1 — Compléter la Lambda</h4>
+                  <ol class="steps">
+                    <li>Console <span class="ui">Lambda</span> → fonction <span class="val-pill">KW-Enrich</span> → onglet <span class="ui">Code</span>.</li>
+                    <li>Complétez le calcul du <code>grid_cell</code> (formule partagée avec les données)&nbsp;:</li>
+                  </ol>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Python</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>def grid_cell(lat, lon):
+    la, lo = int(lat), int(lon)
+    ns = "N" if la &gt;= 0 else "S"
+    ew = "E" if lo &gt;= 0 else "W"
+    return f"{abs(la)}{ns}-{abs(lo)}{ew}"
+
+def lambda_handler(event, context):
+    import base64, json, boto3, os
+    s3 = boto3.client("s3")
+    for record in event["Records"]:
+        payload = json.loads(base64.b64decode(record["kinesis"]["data"]))
+        payload["grid_cell"] = grid_cell(payload["lat"], payload["lon"])
+        key = f"bronze/seismic/{payload['event_id']}.json"
+        s3.put_object(Bucket=os.environ["BUCKET_NAME"], Key=key,
+                      Body=json.dumps(payload), ContentType="application/json")
+    return {"processed": len(event["Records"])}</code></pre>
+                  </div>
+                  <ol class="steps" start="3"><li>Cliquez sur <span class="ui">Deploy</span>.</li></ol>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 1.2 — Brancher le trigger Kinesis</h4>
+                  <ol class="steps">
+                    <li>Dans la Lambda → <span class="ui">Add trigger</span> → <span class="ui">Kinesis</span>.</li>
+                    <li>Stream&nbsp;: <span class="val-pill">kaiju-seismic</span> · <em>Batch size</em>&nbsp;: <code>100</code> · <em>Starting position</em>&nbsp;: <span class="ui">Latest</span>.</li>
+                    <li>Activez le trigger. Le producteur simulé envoie déjà des événements&nbsp;: les objets vont apparaître dans <code>bronze/seismic/</code>.</li>
+                  </ol>
+                  <div class="info-box info">
+                    <span class="icon-bubble">i</span>
+                    <div class="body"><p><span class="label">Concept DEA-C01 :</span> l'<em>event source mapping</em> Kinesis→Lambda gère le polling, le batching et le checkpoint pour vous. <code>Batch size</code> et <code>Starting position</code> sont des points d'examen classiques.</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 2 — Glue Crawler                                        -->
+      <!-- ============================================================ -->
+      <section id="task-2" aria-labelledby="task-2-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">2</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 2 · ⏱ 10 min · Data Store</p>
+              <h3 id="task-2-title">Cataloguer le lac — <span class="aws-svc">Glue</span> Crawler</h3>
+              <div class="svc-chips"><span class="svc-chip"><span class="dot" style="background:#8C4FFF"></span>AWS Glue</span></div>
+            </div>
+            <button class="complete-toggle" data-task="2" type="button" aria-label="Marquer l'étape 2 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Un Crawler <span class="aws-svc">Glue</span> découvre automatiquement le schéma des trois sources Bronze
+              (seismic, thermal, sightings) et les enregistre comme tables dans le <strong>Data Catalog</strong>.
+            </p>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li>Créer le Crawler <span class="val-pill">KW-BronzeCrawler</span> sur <code>s3://…/bronze/</code>.</li>
+              <li>Cible&nbsp;: base de données Glue <span class="val-pill">kaiju_lake</span>.</li>
+              <li>Lancer et vérifier&nbsp;: 3 tables (<code>seismic</code>, <code>thermal</code>, <code>sightings</code>).</li>
+            </ol>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Lac catalogué&nbsp;!</strong> Vos données brutes sont désormais interrogeables par schéma.</span>
+            </div>
+
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-2-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span><span class="label-text">Afficher les instructions détaillées</span><br><span class="hint">Création pas-à-pas du Crawler</span></span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="expand-content" id="task-2-details" role="region" aria-label="Instructions détaillées de l'étape 2">
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 2.1 — Créer et lancer le Crawler</h4>
+                  <ol class="steps">
+                    <li>Console <span class="ui">AWS Glue</span> → <span class="ui">Crawlers</span> → <span class="ui">Create crawler</span>.</li>
+                    <li>Nom&nbsp;: <span class="copyable" data-copy="KW-BronzeCrawler">KW-BronzeCrawler</span>.</li>
+                    <li><em>Data source</em>&nbsp;: S3, chemin <code>s3://&lt;bucket&gt;/bronze/</code> (le crawler découvrira les 3 sous-dossiers).</li>
+                    <li><em>IAM role</em>&nbsp;: sélectionnez le rôle Glue fourni (<span class="val-pill">KW-GlueRole</span>).</li>
+                    <li><em>Target database</em>&nbsp;: <span class="copyable" data-copy="kaiju_lake">kaiju_lake</span>.</li>
+                    <li><span class="ui">Create</span> puis <span class="ui">Run crawler</span>.</li>
+                  </ol>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 2.2 — Vérifier le catalogue</h4>
+                  <ol class="steps">
+                    <li>Glue → <span class="ui">Data Catalog</span> → <span class="ui">Tables</span> → base <span class="val-pill">kaiju_lake</span>.</li>
+                    <li>Confirmez 3 tables (<code>seismic</code>, <code>thermal</code>, <code>sightings</code>) et inspectez leurs colonnes détectées.</li>
+                  </ol>
+                  <div class="info-box info">
+                    <span class="icon-bubble">i</span>
+                    <div class="body"><p><span class="label">Concept DEA-C01 :</span> le Crawler infère le <strong>schéma</strong> et les <strong>partitions</strong>. C'est le pont entre des fichiers bruts S3 et un accès SQL (Athena/Redshift Spectrum).</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 3 — Glue ETL                                            -->
+      <!-- ============================================================ -->
+      <section id="task-3" aria-labelledby="task-3-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">3</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 3 · ⏱ 20 min · Transformation (cœur)</p>
+              <h3 id="task-3-title">Transformer — <span class="aws-svc">Glue</span> ETL (Bronze → Silver → Gold)</h3>
+              <div class="svc-chips"><span class="svc-chip"><span class="dot" style="background:#8C4FFF"></span>AWS Glue ETL</span><span class="svc-chip"><span class="dot dot-storage"></span>S3 Parquet</span></div>
+            </div>
+            <button class="complete-toggle" data-task="3" type="button" aria-label="Marquer l'étape 3 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Le cœur du pipeline. Un job <span class="aws-svc">Glue</span> ETL nettoie le Bronze, le convertit en
+              <strong>Parquet</strong> partitionné (Silver), puis agrège le <strong>threat score</strong> par
+              <code>grid_cell</code> (Gold).
+            </p>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li><strong>Bronze → Silver</strong>&nbsp;: dédupliquer, filtrer <code>magnitude &lt; 1.0</code>, écrire en Parquet partitionné par <code>grid_cell</code>.</li>
+              <li><strong>Silver → Gold</strong>&nbsp;: joindre les 3 sources sur <code>grid_cell</code>, calculer le threat score, écrire dans <code>gold/threat_scores/</code>.</li>
+              <li>Lancer le job et vérifier la sortie Gold.</li>
+            </ol>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Données raffinées&nbsp;!</strong> Le threat score est calculé pour chaque zone.</span>
+            </div>
+
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-3-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span><span class="label-text">Afficher les instructions détaillées</span><br><span class="hint">Job visuel + logique d'agrégation</span></span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="expand-content" id="task-3-details" role="region" aria-label="Instructions détaillées de l'étape 3">
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 3.1 — Créer le job ETL</h4>
+                  <ol class="steps">
+                    <li>Console <span class="ui">Glue</span> → <span class="ui">ETL jobs</span> → <span class="ui">Visual ETL</span>. Nom&nbsp;: <span class="copyable" data-copy="KW-Transform">KW-Transform</span>.</li>
+                    <li><em>Sources</em>&nbsp;: 3 nœuds <span class="ui">Data Catalog</span> → <code>kaiju_lake.seismic</code>, <code>.thermal</code>, <code>.sightings</code>.</li>
+                    <li>Sur <code>seismic</code>&nbsp;: nœud <span class="ui">Filter</span> (<code>magnitude &gt;= 1.0</code>) puis <span class="ui">Drop Duplicates</span>.</li>
+                    <li>Nœud <span class="ui">Join</span> sur la clé <code>grid_cell</code> (les 3 sources).</li>
+                  </ol>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 3.2 — Agréger le threat score (Gold)</h4>
+                  <p style="margin:0 0 12px;color:var(--text-soft)">Ajoutez un nœud <span class="ui">Aggregate</span> (group by <code>grid_cell</code>) ou un nœud <span class="ui">SQL Query</span> avec&nbsp;:</p>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Spark SQL · nœud Gold</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>SELECT
+  grid_cell,
+  ROUND(0.5 * AVG(magnitude)
+      + 0.3 * AVG(temp_delta)
+      + 0.2 * (COUNT(sighting_id) / 10.0), 3) AS threat_score,
+  ROUND(AVG(magnitude), 2)  AS avg_magnitude,
+  ROUND(AVG(temp_delta), 2) AS avg_temp_delta,
+  COUNT(sighting_id)        AS sighting_count
+FROM joined_signals
+GROUP BY grid_cell</code></pre>
+                  </div>
+                  <ol class="steps" start="1">
+                    <li><em>Target</em>&nbsp;: S3 <code>s3://&lt;bucket&gt;/gold/threat_scores/</code>, format <span class="ui">Parquet</span>.</li>
+                    <li><span class="ui">Save</span> → <span class="ui">Run</span>. Surveillez l'exécution dans l'onglet <span class="ui">Runs</span>.</li>
+                  </ol>
+                  <div class="info-box tip">
+                    <span class="icon-bubble">★</span>
+                    <div class="body"><p><span class="label">Concept DEA-C01 :</span> Parquet (columnar) + partitionnement par <code>grid_cell</code> réduisent drastiquement le volume scanné par Athena/Redshift — donc le coût. C'est <em>la</em> bonne pratique d'optimisation testée à l'examen.</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 4 — Athena                                              -->
+      <!-- ============================================================ -->
+      <section id="task-4" aria-labelledby="task-4-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">4</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 4 · ⏱ 10 min · Operations</p>
+              <h3 id="task-4-title">Explorer — <span class="aws-svc">Athena</span> (SQL ad-hoc)</h3>
+              <div class="svc-chips"><span class="svc-chip"><span class="dot" style="background:#8C4FFF"></span>Amazon Athena</span></div>
+            </div>
+            <button class="complete-toggle" data-task="4" type="button" aria-label="Marquer l'étape 4 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Avant de charger l'entrepôt, menez l'enquête avec <span class="aws-svc">Athena</span>&nbsp;: interrogez le lac
+              <span class="aws-svc">S3</span> directement en SQL, sans rien déplacer.
+            </p>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li>Ouvrir <span class="aws-svc">Athena</span> sur la base <span class="val-pill">kaiju_lake</span>.</li>
+              <li>Exécuter les requêtes d'investigation (où le Titan se concentre-t-il&nbsp;?).</li>
+              <li>Observer le <strong>volume de données scanné</strong> (= coût Athena).</li>
+            </ol>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Enquête menée&nbsp;!</strong> Vous savez déjà où la menace se concentre.</span>
+            </div>
+
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-4-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span><span class="label-text">Afficher les instructions détaillées</span><br><span class="hint">Requêtes prêtes à l'emploi</span></span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="expand-content" id="task-4-details" role="region" aria-label="Instructions détaillées de l'étape 4">
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 4.1 — Requêtes d'investigation</h4>
+                  <ol class="steps">
+                    <li>Console <span class="ui">Athena</span> → <span class="ui">Query editor</span> → base <span class="val-pill">kaiju_lake</span> (configurez un dossier de résultats S3 si demandé).</li>
+                    <li>Top des zones par menace (couche Gold)&nbsp;:</li>
+                  </ol>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">SQL · Athena</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>SELECT grid_cell, threat_score, avg_magnitude, sighting_count
+FROM kaiju_lake.threat_scores
+ORDER BY threat_score DESC
+LIMIT 10;</code></pre>
+                  </div>
+                  <p style="margin:14px 0 12px;color:var(--text-soft)">Activité sismique brute par zone (couche Silver)&nbsp;:</p>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">SQL · Athena</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>SELECT grid_cell, COUNT(*) AS tremors, ROUND(AVG(magnitude),2) AS avg_mag
+FROM kaiju_lake.seismic
+GROUP BY grid_cell
+ORDER BY tremors DESC;</code></pre>
+                  </div>
+                  <div class="info-box info">
+                    <span class="icon-bubble">i</span>
+                    <div class="body"><p><span class="label">Concept DEA-C01 :</span> Athena facture au <strong>volume scanné</strong>. Notez la différence de « Data scanned » entre une requête sur Bronze (JSON) et sur Gold (Parquet partitionné) — c'est l'argument clé pour le format columnar.</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 5 — Redshift                                            -->
+      <!-- ============================================================ -->
+      <section id="task-5" aria-labelledby="task-5-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">5</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 5 · ⏱ 20 min · Data Store</p>
+              <h3 id="task-5-title">Entrepôt &amp; rapport — <span class="aws-svc">Amazon Redshift</span></h3>
+              <div class="svc-chips"><span class="svc-chip"><span class="dot" style="background:#8C4FFF"></span>Redshift Serverless</span></div>
+            </div>
+            <button class="complete-toggle" data-task="5" type="button" aria-label="Marquer l'étape 5 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Le moment de vérité. Joignez la couche <strong>Gold</strong> à la table de référence
+              <span class="val-pill">ref_evacuation</span> dans <span class="aws-svc">Redshift</span> pour produire le
+              <strong>Titan Threat Report</strong>&nbsp;: les villes classées par menace, avec leur temps d'évacuation.
+            </p>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li>Créer un <strong>schéma externe</strong> (Redshift Spectrum) vers le Glue Data Catalog.</li>
+              <li>Joindre <code>threat_scores</code> ↔ <code>ref_evacuation</code> sur <code>grid_cell</code>.</li>
+              <li>Produire le rapport classé par <code>threat_score</code>.</li>
+            </ol>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Rapport généré&nbsp;!</strong> Le classement d'évacuation est prêt pour l'ONU.</span>
+            </div>
+
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-5-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span><span class="label-text">Afficher les instructions détaillées</span><br><span class="hint">Schéma externe + requête finale</span></span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="expand-content" id="task-5-details" role="region" aria-label="Instructions détaillées de l'étape 5">
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 5.1 — Schéma externe (Spectrum)</h4>
+                  <ol class="steps">
+                    <li>Console <span class="ui">Redshift</span> → <span class="ui">Query editor v2</span> → connectez-vous au workgroup Serverless fourni.</li>
+                    <li>Créez un schéma externe pointant vers le Data Catalog&nbsp;:</li>
+                  </ol>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">SQL · Redshift</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>CREATE EXTERNAL SCHEMA kaiju_lake
+FROM DATA CATALOG
+DATABASE 'kaiju_lake'
+IAM_ROLE default;</code></pre>
+                  </div>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 5.2 — Le Titan Threat Report</h4>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">SQL · Redshift — la requête finale</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>SELECT
+  t.grid_cell,
+  t.threat_score,
+  e.city,
+  e.population,
+  e.evac_capacity_per_hour,
+  ROUND(e.population::DECIMAL / e.evac_capacity_per_hour, 1) AS hours_to_evacuate
+FROM kaiju_lake.threat_scores t
+JOIN ref_evacuation e ON t.grid_cell = e.grid_cell
+WHERE t.threat_score &gt; 0.5
+ORDER BY t.threat_score DESC;</code></pre>
+                  </div>
+                  <div class="info-box success">
+                    <span class="icon-bubble">✓</span>
+                    <div class="body"><p>Si <strong>Tokyo Bay (<code>34N-139E</code>)</strong> apparaît en tête, votre pipeline est correct de bout en bout&nbsp;! C'est le contrôle de cohérence du lab.</p></div>
+                  </div>
+                  <div class="info-box info">
+                    <span class="icon-bubble">i</span>
+                    <div class="body"><p><span class="label">Concept DEA-C01 :</span> <strong>Redshift Spectrum</strong> interroge des données S3 (couche Gold) <em>sans les charger</em> dans l'entrepôt, et les joint à des tables internes (<code>ref_evacuation</code>). C'est le pattern lakehouse classique de l'examen.</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 6 — Lake Formation                                      -->
+      <!-- ============================================================ -->
+      <section id="task-6" aria-labelledby="task-6-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">6</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 6 · ⏱ 15 min · Security &amp; Governance</p>
+              <h3 id="task-6-title">Gouverner — <span class="aws-svc">Lake Formation</span> (masquage colonne)</h3>
+              <div class="svc-chips"><span class="svc-chip"><span class="dot" style="background:#DD344C"></span>AWS Lake Formation</span></div>
+            </div>
+            <button class="complete-toggle" data-task="6" type="button" aria-label="Marquer l'étape 6 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Les colonnes <code>raw_signal_strength</code> et <code>military_sensor_id</code> sont <strong>classifiées</strong>.
+              Avec <span class="aws-svc">Lake Formation</span>, masquez-les aux analystes <em>junior</em> tout en laissant les
+              <em>senior</em> tout voir.
+            </p>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li>Créer un <strong>LF-Tag</strong> <code>classification</code> = <code>public</code> | <code>classified</code>.</li>
+              <li>Tagguer les 2 colonnes sensibles de <code>kaiju_lake.seismic</code> en <code>classified</code>.</li>
+              <li>Donner au rôle <span class="val-pill">KW-JuniorAnalyst</span> l'accès <strong>sauf</strong> aux colonnes <code>classified</code>.</li>
+              <li>Vérifier dans Athena&nbsp;: le junior ne voit plus les colonnes classifiées.</li>
+            </ol>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Lac gouverné&nbsp;!</strong> Les données militaires sont protégées — mission complète.</span>
+            </div>
+
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-6-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span><span class="label-text">Afficher les instructions détaillées</span><br><span class="hint">LF-Tags + permissions + vérification</span></span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="expand-content" id="task-6-details" role="region" aria-label="Instructions détaillées de l'étape 6">
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 6.1 — Créer le LF-Tag et tagguer les colonnes</h4>
+                  <ol class="steps">
+                    <li>Console <span class="ui">Lake Formation</span> → <span class="ui">LF-Tags and permissions</span> → <span class="ui">Add LF-Tag</span>&nbsp;: clé <span class="copyable" data-copy="classification">classification</span>, valeurs <code>public</code>, <code>classified</code>.</li>
+                    <li><span class="ui">Data Catalog</span> → <span class="ui">Tables</span> → <code>kaiju_lake.seismic</code> → <span class="ui">Edit LF-Tags</span> sur les colonnes <code>raw_signal_strength</code> et <code>military_sensor_id</code> → <code>classification = classified</code>.</li>
+                  </ol>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 6.2 — Permissions par rôle</h4>
+                  <ol class="steps">
+                    <li><span class="ui">Data lake permissions</span> → <span class="ui">Grant</span>.</li>
+                    <li>Principal&nbsp;: <span class="val-pill">KW-JuniorAnalyst</span> · ressource par LF-Tag <code>classification = public</code> → <span class="ui">Describe</span> + <span class="ui">Select</span>.</li>
+                    <li>Principal&nbsp;: <span class="val-pill">KW-SeniorAnalyst</span> · LF-Tag <code>classification</code> ∈ {<code>public</code>, <code>classified</code>} → <span class="ui">Select</span>.</li>
+                  </ol>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 6.3 — Vérifier le masquage</h4>
+                  <ol class="steps">
+                    <li>Dans <span class="aws-svc">Athena</span> (en tant que rôle junior), exécutez&nbsp;:</li>
+                  </ol>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">SQL · Athena (junior)</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>SELECT * FROM kaiju_lake.seismic LIMIT 5;</code></pre>
+                  </div>
+                  <ol class="steps" start="2">
+                    <li>Les colonnes <code>raw_signal_strength</code> et <code>military_sensor_id</code> <strong>ne doivent pas apparaître</strong> dans le résultat.</li>
+                  </ol>
+                  <div class="info-box info">
+                    <span class="icon-bubble">i</span>
+                    <div class="body"><p><span class="label">Concept DEA-C01 :</span> les <strong>LF-Tags</strong> permettent une gouvernance <em>scalable</em> (attribut-based) plutôt que des grants table par table. Le <strong>column-level security</strong> est un sujet d'examen récurrent.</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============ FINAL REPORT ============ -->
+      <section id="report" aria-labelledby="report-title">
+        <div class="conclusion">
+          <h2 id="report-title"><span class="accent">Titan Threat Report</span> — mission accomplie</h2>
+          <p class="conclusion-lead">Quand ce classement s'affiche dans votre Query Editor, le Conseil de Sécurité a son rapport et la ville est prévenue à temps.</p>
+
+          <div class="params" style="max-width:760px;margin:0 auto 26px;text-align:left">
+            <div class="params-row"><div class="key">34N-139E · Tokyo Bay</div><div class="val">threat_score ≈ <strong>0.92</strong> · évacuation ≈ 16.7 h</div></div>
+            <div class="params-row"><div class="key">37N-122W · San Francisco</div><div class="val">threat_score ≈ <strong>0.78</strong> · évacuation ≈ 2.1 h</div></div>
+            <div class="params-row"><div class="key">33N-118W · Los Angeles</div><div class="val">threat_score ≈ <strong>0.61</strong> · évacuation ≈ 5.7 h</div></div>
+          </div>
+
+          <ul class="conclusion-list">
+            <li><span class="check">✓</span><span>Ingéré un flux temps réel et l'avez enrichi (<span class="aws-svc">Kinesis</span> + <span class="aws-svc">Lambda</span>).</span></li>
+            <li><span class="check">✓</span><span>Catalogué et transformé un lac en architecture médaillon (<span class="aws-svc">Glue</span> Crawler + ETL, Parquet).</span></li>
+            <li><span class="check">✓</span><span>Exploré en SQL ad-hoc (<span class="aws-svc">Athena</span>) et produit un rapport via l'entrepôt (<span class="aws-svc">Redshift</span> Spectrum).</span></li>
+            <li><span class="check">✓</span><span>Gouverné les données sensibles au niveau colonne (<span class="aws-svc">Lake Formation</span>).</span></li>
+          </ul>
+          <p class="conclusion-lead" style="margin-top:24px;font-size:15px">
+            Vous venez de toucher <strong>les 7 services data majeurs du DEA-C01</strong> dans un seul pipeline cohérent.
+            Bonne révision — et bonne chance à l'examen&nbsp;!
+          </p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="site-footer">
+    <p>
+      <strong>Data Engineer Lab · Operation Kaiju Watch</strong> ·
+      <span class="aws-svc">Kinesis</span> · <span class="aws-svc">Glue</span> · <span class="aws-svc">S3</span> ·
+      <span class="aws-svc">Athena</span> · <span class="aws-svc">Redshift</span> · <span class="aws-svc">Lake Formation</span> ·
+      © <span class="year">2026</span> onepoint
+    </p>
+  </footer>
+
+  <!-- Mermaid pour le diagramme d'architecture -->
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'neutral', securityLevel: 'loose' });
+  </script>
+  <script src="script.js"></script>
+</body>
+</html>

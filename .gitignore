@@ -3,6 +3,9 @@
 *.xlsx
 *.pdf
 
+# Trainer-only folders (private — not pushed to the public Pages repo)
+*~trainer*
+
 # Old/backup files
 *old*
 *~old*

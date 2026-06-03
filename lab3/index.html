@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Atelier AWS — Galerie Imaginaire : pipeline d'IA générative serverless avec Amazon Bedrock, AWS Step Functions, Lambda, Polly, S3 et DynamoDB. Guide pas à pas en français.">
+  <title>Atelier AWS — Galerie Imaginaire (Bedrock & Step Functions)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23232f3e'/%3E%3Ctext x='50' y='66' font-family='Inter,sans-serif' font-size='38' font-weight='700' text-anchor='middle' fill='%2301A88D'%3EGI%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+
+  <!-- ============ HEADER ============ -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">
+        <button class="menu-toggle" aria-label="Ouvrir le menu" title="Menu">☰</button>
+        <div class="brand-mark">GI</div>
+        <div class="brand-text">
+          <span class="brand-title">Galerie Imaginaire</span>
+          <span class="brand-sub">Cloud Level 3 · Amazon Bedrock &amp; AWS Step Functions (FR)</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="progress-pill" title="Votre progression dans l'atelier">
+          <span class="progress-text">0/6 étapes</span>
+          <span class="progress-bar"><span class="progress-fill" style="width:0%"></span></span>
+        </div>
+        <button class="btn-reset" type="button" title="Réinitialiser la progression">Réinitialiser</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- ============ SIDE NAV ============ -->
+    <nav class="side-nav" aria-label="Sommaire de l'atelier">
+      <p class="nav-title">Atelier</p>
+      <ul class="nav-list">
+        <li><a href="#scenario"><span class="nav-num"><span>i</span></span> Scénario</a></li>
+        <li><a href="#objectifs"><span class="nav-num"><span>O</span></span> Objectifs</a></li>
+        <li><a href="#architecture"><span class="nav-num"><span>A</span></span> Architecture</a></li>
+        <li><a href="#pre-flight"><span class="nav-num"><span>P</span></span> Avant de commencer</a></li>
+      </ul>
+
+      <p class="nav-title">Étapes</p>
+      <ul class="nav-list">
+        <li><a href="#task-1" data-task="1"><span class="nav-num"><span>1</span></span> Découvrir Bedrock</a></li>
+        <li><a href="#task-2" data-task="2"><span class="nav-num"><span>2</span></span> Lambda Curator</a></li>
+        <li><a href="#task-3" data-task="3"><span class="nav-num"><span>3</span></span> Lambda Painter</a></li>
+        <li><a href="#task-4" data-task="4"><span class="nav-num"><span>4</span></span> Lambda AudioGuide</a></li>
+        <li><a href="#task-5" data-task="5"><span class="nav-num"><span>5</span></span> Step Functions</a></li>
+        <li><a href="#task-6" data-task="6"><span class="nav-num"><span>6</span></span> Test de bout en bout</a></li>
+      </ul>
+
+      <p class="nav-title">Fin</p>
+      <ul class="nav-list">
+        <li><a href="#conclusion"><span class="nav-num"><span>★</span></span> Conclusion</a></li>
+      </ul>
+    </nav>
+
+    <!-- ============ MAIN ============ -->
+    <main class="main">
+
+      <!-- ============ HERO ============ -->
+      <section class="hero" id="top" aria-labelledby="hero-title">
+        <span class="hero-eyebrow">Cloud Level 3 · GenAI Serverless</span>
+        <h1 id="hero-title">Galerie <span class="accent">Imaginaire</span></h1>
+        <p class="hero-lead">
+          Concevez un pipeline d'<em>IA générative</em> 100&nbsp;% serverless&nbsp;: à partir d'un·e artiste inventé·e,
+          générez une <strong>exposition virtuelle</strong> complète — dossier curatorial (texte), trois œuvres
+          (images) et un audio-guide (audio) — orchestrée par <span class="aws-svc">Amazon Bedrock</span> et
+          <span class="aws-svc">AWS Step Functions</span>.
+        </p>
+        <div class="hero-meta">
+          <span class="hero-meta-item"><span class="icon">⏱</span> Durée estimée : 75 min</span>
+          <span class="hero-meta-item"><span class="icon">🎯</span> Niveau : Cloud Level 3</span>
+          <span class="hero-meta-item"><span class="icon">🤖</span> Bedrock · Step Functions</span>
+          <span class="hero-meta-item"><span class="icon">🇫🇷</span> Langue : Français</span>
+        </div>
+      </section>
+
+      <!-- ============ SCENARIO ============ -->
+      <section id="scenario" aria-labelledby="scenario-title">
+        <header class="section-header">
+          <p class="section-eyebrow">Mise en situation</p>
+          <h2 class="section-title" id="scenario-title">Scénario de l'atelier</h2>
+          <p class="section-lead">Le contexte client. Comprendre <em>pourquoi</em> on construit ce pipeline avant le <em>comment</em>.</p>
+        </header>
+
+        <div class="card scenario-card">
+          <p>
+            La <span class="company">Fondation Lumière Hélène</span>, musée d'art contemporain reconnu pour ses
+            expositions audacieuses, lance une plateforme expérimentale&nbsp;: <strong>« Galerie Imaginaire »</strong>,
+            un espace en ligne où le public conçoit des expositions fictives et explore les mouvements artistiques
+            de façon interactive.
+          </p>
+          <p>
+            Le visiteur invente un·e artiste — un <strong>nom</strong>, un <strong>mouvement</strong>
+            (impressionnisme, surréalisme, cubisme…), un <strong>thème</strong> — et la plateforme doit générer,
+            en moins d'une minute, une <strong>exposition virtuelle complète</strong>&nbsp;: une notice biographique
+            et curatoriale, trois œuvres illustrées accrochées dans une galerie, et un <em>audio-guide</em> qui
+            raconte l'inspiration de l'artiste, comme dans un vrai musée.
+          </p>
+          <p>
+            L'équipe technique de la fondation est réduite et ne veut <strong>aucun serveur à gérer</strong>.
+            En tant que consultant cloud, votre mission&nbsp;: faire vivre ce pipeline <strong>100&nbsp;% serverless</strong>
+            en complétant la logique d'invocation d'<span class="aws-svc">Amazon Bedrock</span> et en orchestrant
+            l'ensemble avec <span class="aws-svc">AWS Step Functions</span>.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============ OBJECTIFS ============ -->
+      <section id="objectifs" aria-labelledby="obj-title">
+        <header class="section-header">
+          <p class="section-eyebrow">Ce que vous allez apprendre</p>
+          <h2 class="section-title" id="obj-title">Objectifs pédagogiques</h2>
+          <p class="section-lead">Ce lab cible deux compétences clés&nbsp;: <strong>Amazon Bedrock</strong> et <strong>AWS Step Functions</strong>.</p>
+        </header>
+
+        <ul class="objectives-list">
+          <li><span class="check">✓</span><span class="obj-text">Invoquer des modèles <span class="aws-svc">Amazon Bedrock</span> (texte <strong>et</strong> image) depuis <span class="aws-svc">AWS Lambda</span>, via le bon <em>inference profile</em></span></li>
+          <li><span class="check">✓</span><span class="obj-text">Forcer une <strong>sortie JSON structurée</strong> d'un LLM (<em>prompt engineering</em>)</span></li>
+          <li><span class="check">✓</span><span class="obj-text">Décoder une image <em>base64</em> renvoyée par Bedrock et la stocker dans <span class="aws-svc">Amazon S3</span></span></li>
+          <li><span class="check">✓</span><span class="obj-text">Synthétiser une narration avec <span class="aws-svc">Amazon Polly</span></span></li>
+          <li><span class="check">✓</span><span class="obj-text">Construire dans le <strong>Workflow Studio</strong> une state machine <span class="aws-svc">Step Functions</span> avec états <em>Map</em>, <em>Parallel</em>, <em>Retry</em> et <em>Catch</em></span></li>
+        </ul>
+      </section>
+
+      <!-- ============ ARCHITECTURE ============ -->
+      <section id="architecture" aria-labelledby="arch-title">
+        <header class="section-header">
+          <p class="section-eyebrow">Vue d'ensemble</p>
+          <h2 class="section-title" id="arch-title">Architecture &amp; workflow</h2>
+          <p class="section-lead">Le diagramme ci-dessous présente le flux complet, de la requête web jusqu'à la galerie générée.</p>
+        </header>
+
+        <figure class="architecture-frame">
+          <pre class="mermaid">
+flowchart LR
+  classDef client   fill:#5A6B87,stroke:#36465A,color:#fff;
+  classDef network  fill:#8C4FFF,stroke:#5b2bb0,color:#fff;
+  classDef compute  fill:#ED7100,stroke:#b35600,color:#fff;
+  classDef appint   fill:#E7157B,stroke:#a50d57,color:#fff;
+  classDef ml       fill:#01A88D,stroke:#017866,color:#fff;
+  classDef database fill:#C925D1,stroke:#8e1a94,color:#fff;
+  classDef storage  fill:#7AA116,stroke:#55710f,color:#fff;
+
+  USER["Navigateur<br/>Galerie web"]:::client
+  subgraph CLOUD["AWS Cloud"]
+    APIGW["API Gateway"]:::network
+    START["Lambda<br/>StartExhibition"]:::compute
+    subgraph SFN["AWS Step Functions"]
+      CURATOR["Lambda Curator<br/>Bedrock texte"]:::compute
+      subgraph PAR["Parallel"]
+        subgraph MAP["Map x3"]
+          PAINTER["Lambda Painter<br/>Bedrock image"]:::compute
+        end
+        AUDIO["Lambda AudioGuide<br/>Polly"]:::compute
+      end
+      ASSEMBLE["Lambda Assemble<br/>READY"]:::compute
+    end
+    BEDROCK["Amazon Bedrock"]:::ml
+    POLLY["Amazon Polly"]:::ml
+    DDB[("DynamoDB")]:::database
+    S3[("Amazon S3")]:::storage
+  end
+
+  USER -->|1 POST brief| APIGW
+  APIGW -->|2 invoque| START
+  START -->|3 job PENDING| DDB
+  START -->|4 StartExecution| SFN
+  CURATOR -->|5 dossier| BEDROCK
+  CURATOR -->|6 fan-out| PAR
+  PAINTER -->|7 image| BEDROCK
+  PAINTER -->|8 PNG| S3
+  AUDIO -->|9 voix| POLLY
+  AUDIO -->|10 MP3| S3
+  PAR --> ASSEMBLE
+  ASSEMBLE -->|11 READY| DDB
+  USER -.->|12 GET polling| APIGW
+  APIGW -.->|13 lit| DDB
+  S3 -.->|14 images + audio| USER
+          </pre>
+          <figcaption class="caption">Workflow <em>serverless</em> — <span class="aws-svc">API Gateway</span> → <span class="aws-svc">Step Functions</span> orchestrant <span class="aws-svc">Bedrock</span> (texte + image) et <span class="aws-svc">Polly</span>, avec <span class="aws-svc">DynamoDB</span> et <span class="aws-svc">S3</span>.</figcaption>
+        </figure>
+
+        <div class="info-box info">
+          <span class="icon-bubble">i</span>
+          <div class="body">
+            <p><span class="label">Ce que VOUS construisez :</span> les 3 fonctions Lambda d'IA (<span class="aws-svc">Bedrock</span> texte, <span class="aws-svc">Bedrock</span> image, <span class="aws-svc">Polly</span>) et la logique <span class="aws-svc">Step Functions</span> (états <em>Map</em> + <em>Parallel</em> + <em>Retry</em>).</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ PRE-FLIGHT ============ -->
+      <section id="pre-flight" aria-labelledby="pre-title">
+        <header class="section-header">
+          <p class="section-eyebrow">Préparation</p>
+          <h2 class="section-title" id="pre-title">Avant de commencer</h2>
+          <p class="section-lead">Quelques repères pour que tout se passe bien.</p>
+        </header>
+
+        <div class="info-box info">
+          <span class="icon-bubble">i</span>
+          <div class="body">
+            <p><span class="label">Région :</span> placez-vous dans <code>eu-west-1</code> (Irlande) et restez-y pour tout l'atelier.</p>
+          </div>
+        </div>
+
+        <div class="info-box tip">
+          <span class="icon-bubble">★</span>
+          <div class="body">
+            <p><span class="label">Modèles utilisés :</span> texte <code>eu.amazon.nova-micro-v1:0</code> · image <code>stability.stable-image-core-v1:0</code> (Stability AI). Voix audio-guide&nbsp;: <code>Lea</code> (FR).</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 1 — Discover Bedrock                                    -->
+      <!-- ============================================================ -->
+      <section id="task-1" aria-labelledby="task-1-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">1</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 1</p>
+              <h3 id="task-1-title">Découvrir les modèles <span class="aws-svc">Amazon Bedrock</span></h3>
+            </div>
+            <button class="complete-toggle" data-task="1" type="button" aria-label="Marquer l'étape 1 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Avant de coder, prenez en main <span class="aws-svc">Amazon Bedrock</span> dans le <em>Playground</em> et repérez les
+              <strong>identifiants de modèle</strong> que vous utiliserez. <strong>Aucune activation n'est nécessaire</strong>&nbsp;:
+              les modèles serverless sont déjà disponibles.
+            </p>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li>Console <span class="aws-svc">Bedrock</span> (région <code>eu-west-1</code>) → <span class="ui">Playground</span> → <span class="ui">Chat / Text</span>.</li>
+              <li>Tester un prompt avec un modèle <span class="aws-svc">Nova</span> pour observer la réponse.</li>
+              <li>Noter les <strong>model IDs</strong> du lab&nbsp;: texte <span class="copyable" data-copy="eu.amazon.nova-micro-v1:0">eu.amazon.nova-micro-v1:0</span> · image <span class="copyable" data-copy="stability.stable-image-core-v1:0">stability.stable-image-core-v1:0</span>.</li>
+            </ol>
+
+            <div class="info-box warning">
+              <span class="icon-bubble">!</span>
+              <div class="body">
+                <p><span class="label">Profil d'inférence :</span> en <code>eu-west-1</code>, les modèles texte Nova s'invoquent via un <strong>inference profile</strong> régional — d'où le préfixe <code>eu.</code> obligatoire. Utiliser l'ID brut <code>amazon.nova-micro-v1:0</code> provoquerait une erreur.</p>
+              </div>
+            </div>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Prêt&nbsp;!</strong> Vous connaissez vos modèles et savez où les tester.</span>
+            </div>
+
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-1-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span><span class="label-text">Afficher les instructions détaillées</span><br><span class="hint">Pas-à-pas dans le Playground</span></span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="expand-content" id="task-1-details" role="region" aria-label="Instructions détaillées de l'étape 1">
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 1.1 — Ouvrir le Playground</h4>
+                  <ol class="steps">
+                    <li>En haut de la console, recherchez et sélectionnez <span class="ui">Amazon Bedrock</span>. Vérifiez la région <code>eu-west-1</code> (en haut à droite).</li>
+                    <li>Dans le volet de gauche, sous <span class="ui">Playgrounds</span>, choisissez <span class="ui">Chat / Text</span>.</li>
+                    <li>Cliquez sur <span class="ui">Select model</span> → fournisseur <strong>Amazon</strong> → <strong>Nova Micro</strong> → <span class="ui">Apply</span>.</li>
+                  </ol>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 1.2 — Tester un prompt</h4>
+                  <ol class="steps">
+                    <li>Saisissez par exemple&nbsp;: <em>« Décris en une phrase le mouvement surréaliste »</em> et lancez (<span class="ui">Run</span>).</li>
+                    <li>Observez la réponse, la latence et la fenêtre de tokens — vous comprenez ainsi le comportement que votre Lambda exploitera.</li>
+                  </ol>
+                  <div class="info-box info">
+                    <span class="icon-bubble">i</span>
+                    <div class="body"><p>Le Playground est parfait pour <strong>itérer sur un prompt</strong> avant de le coller dans le code. On y reviendra pour ajuster le prompt du Curator.</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 2 — Lambda Curator                                      -->
+      <!-- ============================================================ -->
+      <section id="task-2" aria-labelledby="task-2-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">2</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 2</p>
+              <h3 id="task-2-title">Lambda <span class="val-pill">Curator</span> — texte (Bedrock)</h3>
+            </div>
+            <button class="complete-toggle" data-task="2" type="button" aria-label="Marquer l'étape 2 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Complétez la fonction <span class="val-pill">GI-Curator</span> (déjà créée, rôle et variables d'environnement en place)
+              pour générer le <strong>dossier curatorial</strong> en <strong>JSON structuré</strong> via l'API <em>Converse</em> de <span class="aws-svc">Bedrock</span>.
+            </p>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li>Ouvrir la Lambda <span class="val-pill">GI-Curator</span> dans la console.</li>
+              <li>Compléter les <strong>3 TODO</strong>&nbsp;: appel <code>converse</code>, extraction du texte, parsing JSON.</li>
+              <li><span class="ui">Deploy</span>, puis <span class="ui">Test</span> avec un event d'exemple.</li>
+            </ol>
+
+            <div class="info-box info">
+              <span class="icon-bubble">i</span>
+              <div class="body"><p><span class="label">Sortie attendue :</span> <code>{ exhibitionId, artist, movement, theme, dossier:{ bio, curatorial_statement, artworks[3] } }</code> — chaque œuvre porte <code>title</code>, <code>wall_label</code> et un <code>image_prompt</code> (en anglais) pour l'étape suivante.</p></div>
+            </div>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Curator opérationnel.</strong> Le LLM produit un dossier JSON exploitable par le pipeline.</span>
+            </div>
+
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-2-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span><span class="label-text">Afficher les instructions détaillées</span><br><span class="hint">Les 3 TODO + event de test</span></span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="expand-content" id="task-2-details" role="region" aria-label="Instructions détaillées de l'étape 2">
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 2.1 — Ouvrir la fonction</h4>
+                  <ol class="steps">
+                    <li>Console <span class="ui">Lambda</span> → fonction <span class="val-pill">GI-Curator</span> → onglet <span class="ui">Code</span>.</li>
+                    <li>Repérez les trois blocs <code># TODO</code> dans <code>index.py</code>.</li>
+                  </ol>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 2.2 — Compléter les TODO</h4>
+                  <p style="margin:0 0 12px;color:var(--text-soft)"><strong>TODO 1</strong> — appel Bedrock Converse&nbsp;:</p>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Python</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>response = bedrock.converse(
+    modelId=TEXT_MODEL_ID,
+    messages=[{"role": "user", "content": [{"text": prompt}]}],
+    inferenceConfig={"maxTokens": 1200, "temperature": 0.8},
+)</code></pre>
+                  </div>
+                  <p style="margin:14px 0 12px;color:var(--text-soft)"><strong>TODO 2</strong> — extraire le texte de la réponse&nbsp;:</p>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Python</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>raw_text = response["output"]["message"]["content"][0]["text"]</code></pre>
+                  </div>
+                  <p style="margin:14px 0 12px;color:var(--text-soft)"><strong>TODO 3</strong> — parser le JSON nettoyé&nbsp;:</p>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Python</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>dossier = json.loads(cleaned)</code></pre>
+                  </div>
+                  <div class="info-box tip">
+                    <span class="icon-bubble">★</span>
+                    <div class="body"><p>Cliquez sur <span class="ui">Deploy</span> après chaque modification. La variable d'env <code>TEXT_MODEL_ID</code> est déjà renseignée (<code>eu.amazon.nova-micro-v1:0</code>).</p></div>
+                  </div>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 2.3 — Tester</h4>
+                  <ol class="steps">
+                    <li>Onglet <span class="ui">Test</span> → créez un event&nbsp;:</li>
+                  </ol>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">JSON · event de test</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>{
+  "exhibitionId": "test-001",
+  "artist": "Élodie Vasseur",
+  "movement": "Surréalisme",
+  "theme": "la mémoire et le temps"
+}</code></pre>
+                  </div>
+                  <ol class="steps" start="2">
+                    <li>Lancez <span class="ui">Test</span>. Vous devez obtenir un <code>dossier</code> avec <code>bio</code>, <code>curatorial_statement</code> et 3 <code>artworks</code>.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 3 — Lambda Painter                                      -->
+      <!-- ============================================================ -->
+      <section id="task-3" aria-labelledby="task-3-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">3</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 3</p>
+              <h3 id="task-3-title">Lambda <span class="val-pill">Painter</span> — image (Bedrock)</h3>
+            </div>
+            <button class="complete-toggle" data-task="3" type="button" aria-label="Marquer l'étape 3 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Complétez <span class="val-pill">GI-Painter</span> pour générer <strong>une œuvre</strong> avec le modèle image
+              <span class="aws-svc">Stability AI</span>, décoder le <em>base64</em> et stocker le PNG dans <span class="aws-svc">S3</span>.
+              Cette fonction sera appelée 3× en parallèle par l'état <em>Map</em>.
+            </p>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li>Ouvrir <span class="val-pill">GI-Painter</span>.</li>
+              <li>Compléter les <strong>4 TODO</strong>&nbsp;: corps de requête Stability, <code>invoke_model</code>, lecture du base64, dépôt S3.</li>
+              <li><span class="ui">Deploy</span> + <span class="ui">Test</span>.</li>
+            </ol>
+
+            <div class="info-box warning">
+              <span class="icon-bubble">!</span>
+              <div class="body"><p><span class="label">Schéma différent de Nova :</span> le modèle <span class="aws-svc">Stability</span> attend <code>{ "prompt", "aspect_ratio", "output_format" }</code> et renvoie un tableau <code>images</code> de chaînes <em>base64</em> — ce n'est pas le format de l'API Converse.</p></div>
+            </div>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Painter opérationnel.</strong> Une œuvre est générée et déposée dans <span class="aws-svc">S3</span>.</span>
+            </div>
+
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-3-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span><span class="label-text">Afficher les instructions détaillées</span><br><span class="hint">Les 4 TODO + event de test</span></span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="expand-content" id="task-3-details" role="region" aria-label="Instructions détaillées de l'étape 3">
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 3.1 — Compléter les TODO</h4>
+                  <p style="margin:0 0 12px;color:var(--text-soft)"><strong>TODO 1</strong> — corps de requête Stability&nbsp;:</p>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Python</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>request_body = {
+    "prompt": full_prompt,
+    "aspect_ratio": "1:1",
+    "output_format": "png",
+}</code></pre>
+                  </div>
+                  <p style="margin:14px 0 12px;color:var(--text-soft)"><strong>TODO 2</strong> — invoquer le modèle image&nbsp;:</p>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Python</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>response = bedrock.invoke_model(
+    modelId=IMAGE_MODEL_ID,
+    body=json.dumps(request_body),
+    contentType="application/json",
+    accept="application/json",
+)</code></pre>
+                  </div>
+                  <p style="margin:14px 0 12px;color:var(--text-soft)"><strong>TODO 3</strong> — récupérer l'image base64&nbsp;:</p>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Python</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>payload = json.loads(response["body"].read())
+image_b64 = payload["images"][0]</code></pre>
+                  </div>
+                  <p style="margin:14px 0 12px;color:var(--text-soft)"><strong>TODO 4</strong> — décoder + déposer dans S3&nbsp;:</p>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Python</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>image_bytes = base64.b64decode(image_b64)
+s3.put_object(
+    Bucket=BUCKET_NAME,
+    Key=key,
+    Body=image_bytes,
+    ContentType="image/png",
+)</code></pre>
+                  </div>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 3.2 — Tester</h4>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">JSON · event de test</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>{
+  "exhibitionId": "test-001",
+  "movement": "Surréalisme",
+  "index": 0,
+  "artwork": {
+    "title": "Le Réveil des Horloges",
+    "wall_label": "Huile sur toile, 1923",
+    "image_prompt": "melting clocks over a quiet harbor, dreamlike, soft light"
+  }
+}</code></pre>
+                  </div>
+                  <ol class="steps">
+                    <li>Après <span class="ui">Test</span>, vérifiez dans <span class="aws-svc">S3</span> (bucket <em>assets</em>) la présence de <code>test-001/artwork-0.png</code>.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 4 — Lambda AudioGuide                                   -->
+      <!-- ============================================================ -->
+      <section id="task-4" aria-labelledby="task-4-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">4</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 4</p>
+              <h3 id="task-4-title">Lambda <span class="val-pill">AudioGuide</span> — narration (Polly)</h3>
+            </div>
+            <button class="complete-toggle" data-task="4" type="button" aria-label="Marquer l'étape 4 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Complétez <span class="val-pill">GI-AudioGuide</span> pour transformer la bio + le propos curatorial en
+              <strong>audio-guide MP3</strong> avec <span class="aws-svc">Amazon Polly</span> (voix fixe <code>Lea</code>, FR), stocké dans <span class="aws-svc">S3</span>.
+            </p>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li>Ouvrir <span class="val-pill">GI-AudioGuide</span>.</li>
+              <li>Compléter les <strong>3 TODO</strong>&nbsp;: <code>synthesize_speech</code>, lecture du flux, dépôt S3.</li>
+              <li><span class="ui">Deploy</span> + <span class="ui">Test</span>.</li>
+            </ol>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>AudioGuide opérationnel.</strong> La narration est synthétisée et stockée.</span>
+            </div>
+
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-4-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span><span class="label-text">Afficher les instructions détaillées</span><br><span class="hint">Les 3 TODO + event de test</span></span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="expand-content" id="task-4-details" role="region" aria-label="Instructions détaillées de l'étape 4">
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 4.1 — Compléter les TODO</h4>
+                  <p style="margin:0 0 12px;color:var(--text-soft)"><strong>TODO 1</strong> — synthèse Polly&nbsp;:</p>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Python</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>response = polly.synthesize_speech(
+    Text=script,
+    OutputFormat="mp3",
+    VoiceId=POLLY_VOICE,   # "Lea"
+    Engine="neural",
+)</code></pre>
+                  </div>
+                  <p style="margin:14px 0 12px;color:var(--text-soft)"><strong>TODO 2</strong> — lire le flux audio&nbsp;:</p>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Python</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>audio_bytes = response["AudioStream"].read()</code></pre>
+                  </div>
+                  <p style="margin:14px 0 12px;color:var(--text-soft)"><strong>TODO 3</strong> — déposer le MP3&nbsp;:</p>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Python</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>s3.put_object(
+    Bucket=BUCKET_NAME,
+    Key=key,
+    Body=audio_bytes,
+    ContentType="audio/mpeg",
+)</code></pre>
+                  </div>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 4.2 — Tester</h4>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">JSON · event de test</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>{
+  "exhibitionId": "test-001",
+  "artist": "Élodie Vasseur",
+  "dossier": {
+    "bio": "Née en 1898, Élodie Vasseur explore les rêves.",
+    "curatorial_statement": "Cette exposition interroge la mémoire."
+  }
+}</code></pre>
+                  </div>
+                  <ol class="steps">
+                    <li>Vérifiez dans <span class="aws-svc">S3</span> la présence de <code>test-001/audioguide.mp3</code> (et écoutez-le&nbsp;!).</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 5 — Step Functions (CORE)                               -->
+      <!-- ============================================================ -->
+      <section id="task-5" aria-labelledby="task-5-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">5</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 5 · le cœur du lab</p>
+              <h3 id="task-5-title">Orchestrer avec <span class="aws-svc">Step Functions</span> (Workflow Studio)</h3>
+            </div>
+            <button class="complete-toggle" data-task="5" type="button" aria-label="Marquer l'étape 5 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              La state machine <span class="val-pill">GI-Galerie</span> contient déjà l'état <span class="val-pill">Curator</span> branché.
+              <strong>À vous de construire la suite</strong> dans le <strong>Workflow Studio</strong> (interface visuelle)&nbsp;:
+              un état <em>Parallel</em> contenant un <em>Map</em> (3× Painter) et la branche <em>AudioGuide</em>, puis <em>Assemble</em>.
+            </p>
+
+            <div class="info-box info">
+              <span class="icon-bubble">i</span>
+              <div class="body"><p><span class="label">Déjà fourni :</span> l'état <span class="val-pill">Curator</span> (sortie dans <code>$.dossier</code>). <span class="label">À construire :</span> <em>Map</em> + <em>Parallel</em> + <em>Retry/Catch</em> + <em>Assemble</em>.</p></div>
+            </div>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li>Ouvrir <span class="val-pill">GI-Galerie</span> → <span class="ui">Edit</span> → <span class="ui">Workflow Studio</span>.</li>
+              <li>Ajouter un <strong>Map</strong> sur <code>$.dossier.artworks</code> (<code>MaxConcurrency 3</code>) avec <span class="val-pill">Painter</span> comme itérateur.</li>
+              <li>Envelopper <strong>Map</strong> et <strong>AudioGuide</strong> dans un état <strong>Parallel</strong>.</li>
+              <li>Ajouter <strong>Retry</strong> (throttling Bedrock) et <strong>Catch</strong> (→ <em>FAILED</em>).</li>
+              <li>Brancher <strong>Assemble</strong> en sortie, enregistrer, puis lancer une exécution.</li>
+            </ol>
+
+            <div class="info-box tip">
+              <span class="icon-bubble">★</span>
+              <div class="body"><p> Après <span class="ui">Start execution</span>, observez le <strong>graphe se colorer</strong> en vert étape par étape, avec les 3 Painter qui s'exécutent <em>en parallèle</em>.</p></div>
+            </div>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Pipeline orchestré&nbsp;!</strong> Vous maîtrisez Map, Parallel, Retry et Catch.</span>
+            </div>
+
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-5-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span><span class="label-text">Afficher les instructions détaillées</span><br><span class="hint">Construction visuelle, état par état</span></span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="expand-content" id="task-5-details" role="region" aria-label="Instructions détaillées de l'étape 5">
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 5.1 — Ajouter l'état Map (3 œuvres en parallèle)</h4>
+                  <ol class="steps">
+                    <li>Console <span class="ui">Step Functions</span> → <span class="val-pill">GI-Galerie</span> → <span class="ui">Edit</span> → <span class="ui">Workflow Studio</span>.</li>
+                    <li>Sous l'état <span class="val-pill">Curator</span>, glissez un état <span class="ui">Map</span> (catégorie <em>Flow</em>).</li>
+                    <li>Dans la config du Map&nbsp;: <em>Item source</em> = <code>$.dossier.artworks</code> ; <em>Concurrency</em> = <code>3</code>.</li>
+                    <li>À l'intérieur du Map, glissez une action <span class="ui">Lambda Invoke</span> → fonction <span class="val-pill">GI-Painter</span>.</li>
+                    <li>Configurez le <em>Payload</em> de Painter pour passer <code>exhibitionId</code>, <code>movement</code>, l'index (<code>$$.Map.Item.Index</code>) et l'œuvre (<code>$$.Map.Item.Value</code>).</li>
+                  </ol>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 5.2 — Envelopper dans un Parallel (images ‖ audio)</h4>
+                  <ol class="steps">
+                    <li>Ajoutez un état <span class="ui">Parallel</span> autour du Map.</li>
+                    <li>Dans la 2ᵉ branche du Parallel, glissez <span class="ui">Lambda Invoke</span> → <span class="val-pill">GI-AudioGuide</span> (payload&nbsp;: <code>exhibitionId</code>, <code>artist</code>, <code>dossier</code>).</li>
+                  </ol>
+                  <div class="info-box info">
+                    <span class="icon-bubble">i</span>
+                    <div class="body"><p>Les deux branches s'exécutent <strong>simultanément</strong> — c'est tout l'intérêt du Parallel&nbsp;: la génération d'images n'attend pas l'audio, et inversement.</p></div>
+                  </div>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 5.3 — Résilience : Retry &amp; Catch</h4>
+                  <ol class="steps">
+                    <li>Sur <span class="val-pill">Painter</span> et <span class="val-pill">Curator</span>, ajoutez un <span class="ui">Retry</span> sur les erreurs de <em>throttling</em> (<code>ThrottlingException</code>) avec un <em>backoff</em> exponentiel.</li>
+                    <li>Sur le <span class="ui">Parallel</span>, ajoutez un <span class="ui">Catch</span> <code>States.ALL</code> qui mène à un état marquant le job <code>FAILED</code> dans <span class="aws-svc">DynamoDB</span>.</li>
+                  </ol>
+                  <div class="info-box warning">
+                    <span class="icon-bubble">!</span>
+                    <div class="body"><p><span class="label">Leçon réelle :</span> <span class="aws-svc">Bedrock</span> applique du <em>throttling</em> (quotas de requêtes/min). Sans Retry, une rafale de 3 images peut échouer. Le <em>backoff</em> exponentiel résout ça proprement.</p></div>
+                  </div>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 5.4 — Assemble &amp; exécution</h4>
+                  <ol class="steps">
+                    <li>En sortie du Parallel, glissez <span class="ui">Lambda Invoke</span> → <span class="val-pill">GI-Assemble</span> (passez <code>exhibitionId</code>, <code>dossier</code> et le résultat du Parallel).</li>
+                    <li><span class="ui">Save</span>, puis <span class="ui">Execute</span> avec l'input&nbsp;:</li>
+                  </ol>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">JSON · input d'exécution</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>{
+  "exhibitionId": "sfn-test-001",
+  "artist": "Élodie Vasseur",
+  "movement": "Surréalisme",
+  "theme": "la mémoire et le temps"
+}</code></pre>
+                  </div>
+                  <ol class="steps" start="3">
+                    <li>Observez le <strong>graphe d'exécution</strong>&nbsp;: Curator → (Map ‖ AudioGuide) → Assemble, chaque nœud passant au vert.</li>
+                    <li>En cas d'erreur, ouvrez le nœud rouge pour lire l'<em>input/output</em> et la cause — c'est l'outil de debug clé de Step Functions.</li>
+                  </ol>
+                  <div class="info-box tip">
+                    <span class="icon-bubble">★</span>
+                    <div class="body"><p>Besoin d'un repère&nbsp;? Le formateur dispose d'un corrigé ASL complet (<code>galerie.solution.asl.json</code>) si vous souhaitez comparer votre construction.</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 6 — End-to-end                                          -->
+      <!-- ============================================================ -->
+      <section id="task-6" aria-labelledby="task-6-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">6</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 6</p>
+              <h3 id="task-6-title">Test de bout en bout — la galerie</h3>
+            </div>
+            <button class="complete-toggle" data-task="6" type="button" aria-label="Marquer l'étape 6 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Tout est en place. Ouvrez l'<strong>interface galerie</strong> (déjà en ligne, fournie par le formateur) et
+              composez votre première exposition de bout en bout.
+            </p>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li>Ouvrir l'<strong>URL du site</strong>.</li>
+              <li>Saisir un artiste, un mouvement et un thème → <span class="ui">Inaugurer l'exposition</span>.</li>
+              <li>Patienter pendant le <em>vernissage</em> (polling), puis admirer les <strong>3 œuvres + cartels + audio-guide</strong>.</li>
+              <li>Vérifier en console&nbsp;: exécution <span class="aws-svc">Step Functions</span> verte, items dans <span class="aws-svc">DynamoDB</span>, objets dans <span class="aws-svc">S3</span>.</li>
+            </ol>
+
+            <div class="info-box info">
+              <span class="icon-bubble">i</span>
+              <div class="body"><p><span class="label">Rien à déployer :</span> l'API et le site sont déjà servis depuis <span class="aws-svc">S3</span>. Ce test valide que <strong>votre</strong> code Lambda et <strong>votre</strong> state machine fonctionnent ensemble.</p></div>
+            </div>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Bravo&nbsp;!</strong> Votre Galerie Imaginaire prend vie de bout en bout.</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============ CONCLUSION ============ -->
+      <section id="conclusion" aria-labelledby="conclusion-title">
+        <div class="conclusion">
+          <h2 id="conclusion-title"><span class="accent">Bravo&nbsp;!</span> Vous avez terminé ce lab</h2>
+          <p class="conclusion-lead">Vous avez conçu un pipeline d'IA générative <em>serverless</em> de bout en bout, et surtout monté en compétence sur deux services majeurs.</p>
+          <ul class="conclusion-list">
+            <li><span class="check">✓</span><span>Invoqué <span class="aws-svc">Amazon Bedrock</span> pour générer du <strong>texte structuré</strong> et des <strong>images</strong>, avec deux familles de modèles aux schémas distincts.</span></li>
+            <li><span class="check">✓</span><span>Synthétisé une narration avec <span class="aws-svc">Amazon Polly</span>.</span></li>
+            <li><span class="check">✓</span><span>Orchestré le tout avec <span class="aws-svc">AWS Step Functions</span> — <em>Map</em>, <em>Parallel</em>, <em>Retry</em>, <em>Catch</em> — dans le Workflow Studio.</span></li>
+            <li><span class="check">✓</span><span>Assemblé une architecture <strong>100&nbsp;% serverless</strong> (<span class="aws-svc">Lambda</span>, <span class="aws-svc">API Gateway</span>, <span class="aws-svc">S3</span>, <span class="aws-svc">DynamoDB</span>) sans aucun serveur à maintenir.</span></li>
+          </ul>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="site-footer">
+    <p>
+      <strong>Cloud Level 3 · Galerie Imaginaire</strong> ·
+      GenAI serverless avec <span class="aws-svc">Amazon Bedrock</span> &amp; <span class="aws-svc">AWS Step Functions</span> ·
+      © <span class="year">2026</span> onepoint
+    </p>
+  </footer>
+
+  <!-- Mermaid pour le diagramme d'architecture -->
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'neutral', securityLevel: 'loose' });
+  </script>
+  <script src="script.js"></script>
+</body>
+</html>

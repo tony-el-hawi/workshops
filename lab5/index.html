@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Atelier AWS — Boussole FinOps : construire un système FinOps multi-agents sur Amazon Bedrock AgentCore (Argus, Sibylle, Faucon), avec l'aide de Kiro. Atelier d'équipe en français.">
+  <title>Atelier AWS — Boussole FinOps (Bedrock AgentCore & Kiro)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23232f3e'/%3E%3Ctext x='50' y='66' font-family='Inter,sans-serif' font-size='34' font-weight='700' text-anchor='middle' fill='%23ff9900'%3EBF%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+
+  <!-- ============ HEADER ============ -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">
+        <button class="menu-toggle" aria-label="Ouvrir le menu" title="Menu">☰</button>
+        <div class="brand-mark">BF</div>
+        <div class="brand-text">
+          <span class="brand-title">Boussole FinOps</span>
+          <span class="brand-sub">Workshop · Amazon Bedrock AgentCore &amp; Kiro (FR)</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="progress-pill" title="Progression de votre équipe dans l'atelier">
+          <span class="progress-text">0/6 étapes</span>
+          <span class="progress-bar"><span class="progress-fill" style="width:0%"></span></span>
+        </div>
+        <button class="btn-reset" type="button" title="Réinitialiser la progression">Réinitialiser</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- ============ SIDE NAV ============ -->
+    <nav class="side-nav" aria-label="Sommaire de l'atelier">
+      <p class="nav-title">Atelier</p>
+      <ul class="nav-list">
+        <li><a href="#scenario"><span class="nav-num"><span>i</span></span> Scénario</a></li>
+        <li><a href="#equipe"><span class="nav-num"><span>★</span></span> Équipe &amp; rôles</a></li>
+        <li><a href="#objectifs"><span class="nav-num"><span>O</span></span> Objectifs</a></li>
+        <li><a href="#architecture"><span class="nav-num"><span>A</span></span> Architecture</a></li>
+        <li><a href="#pre-flight"><span class="nav-num"><span>P</span></span> Avant de commencer</a></li>
+      </ul>
+
+      <p class="nav-title">Étapes</p>
+      <ul class="nav-list">
+        <li><a href="#task-1" data-task="1"><span class="nav-num"><span>1</span></span> Prendre en main AgentCore</a></li>
+        <li><a href="#task-2" data-task="2"><span class="nav-num"><span>2</span></span> Outils via Gateway</a></li>
+        <li><a href="#task-3" data-task="3"><span class="nav-num"><span>3</span></span> Argus — Analyste</a></li>
+        <li><a href="#task-4" data-task="4"><span class="nav-num"><span>4</span></span> Sibylle — Prévision</a></li>
+        <li><a href="#task-5" data-task="5"><span class="nav-num"><span>5</span></span> Faucon — Optimiseur</a></li>
+        <li><a href="#task-6" data-task="6"><span class="nav-num"><span>6</span></span> Orchestrer &amp; tester</a></li>
+      </ul>
+
+      <p class="nav-title">Fin</p>
+      <ul class="nav-list">
+        <li><a href="#conclusion"><span class="nav-num"><span>★</span></span> Conclusion</a></li>
+      </ul>
+    </nav>
+
+    <!-- ============ MAIN ============ -->
+    <main class="main">
+
+      <!-- ============ HERO ============ -->
+      <section class="hero" id="top" aria-labelledby="hero-title">
+        <span class="hero-eyebrow">Workshop d'équipe · FinOps agentique</span>
+        <h1 id="hero-title">Boussole <span class="accent">FinOps</span></h1>
+        <p class="hero-lead">
+          Construisez, <strong>en équipe</strong>, un système <em>FinOps multi-agents</em> sur
+          <span class="aws-svc">Amazon Bedrock AgentCore</span> qui voit, anticipe et agit sur les coûts —
+          AWS multi-comptes <strong>et</strong> hors-AWS (on-premise, licences SaaS). Trois agents&nbsp;:
+          <strong>Argus</strong> (analyse), <strong>Sibylle</strong> (prévision &amp; alerte) et
+          <strong>Faucon</strong> (optimisation). Et vous le faites <strong>main dans la main avec Kiro</strong>.
+        </p>
+        <div class="hero-meta">
+          <span class="hero-meta-item"><span class="icon">⏱</span> Durée estimée : 2 h 30</span>
+          <span class="hero-meta-item"><span class="icon">👥</span> En équipe : 2 à 5 personnes</span>
+          <span class="hero-meta-item"><span class="icon">🤖</span> AgentCore · Kiro</span>
+          <span class="hero-meta-item"><span class="icon">🇫🇷</span> Langue : Français</span>
+        </div>
+      </section>
+
+      <!-- ============ SCENARIO ============ -->
+      <section id="scenario" aria-labelledby="scenario-title">
+        <header class="section-header">
+          <p class="section-eyebrow">Mise en situation</p>
+          <h2 class="section-title" id="scenario-title">Scénario de l'atelier</h2>
+          <p class="section-lead">Le contexte client. Comprendre <em>pourquoi</em> on construit cette Boussole avant le <em>comment</em>.</p>
+        </header>
+
+        <div class="card scenario-card">
+          <p>
+            <span class="company">Groupe Méridian</span> est une <em>scale-up</em> française de logistique et de
+            <em>e-commerce</em> passée de 15 à 400 personnes en trois ans. Elle opère aujourd'hui une
+            <strong>Organisation <span class="aws-svc">AWS</span> de plusieurs dizaines de comptes</strong>
+            (production, pré-production, équipes produit, <em>data</em>, bac à sable), un
+            <strong>datacenter on-premise</strong> historique en cours de décommissionnement, et une
+            <strong>forêt d'abonnements SaaS</strong> souscrits au fil de l'eau par les équipes.
+          </p>
+          <p>
+            Au dernier comité de direction, <strong>Inès Khelifi</strong>, la nouvelle directrice financière,
+            pose une question simple et redoutable&nbsp;: <em>« Combien nous coûte réellement notre technologie —
+            tout compris — et où gaspille-t-on&nbsp;? »</em> Personne ne sait répondre en une seule vue. La facture
+            <span class="aws-svc">AWS</span> a <strong>doublé en un an</strong>, des environnements de démonstration
+            tournent <strong>la nuit et le week-end</strong> sans usage, et les abonnements SaaS s'empilent
+            <strong>sans propriétaire identifié</strong>.
+          </p>
+          <p>
+            La cellule <strong>FinOps</strong>, menée par <strong>Tom Riveiro</strong>, a déjà les bonnes
+            sources&nbsp;: <span class="aws-svc">Amazon CloudWatch</span> (utilisation),
+            <span class="aws-svc">AWS Trusted Advisor</span> (checks gratuits) et les
+            <span class="aws-svc">Cost &amp; Usage Reports</span> (CUR). Mais leur exploitation est
+            <strong>manuelle, lente et cloisonnée par compte</strong>. L'analyse native de
+            <span class="aws-svc">Cost Explorer</span> aide, mais elle s'arrête aux frontières d'AWS&nbsp;: elle
+            ignore le <strong>on-prem</strong> et les <strong>licences SaaS</strong>.
+          </p>
+          <p>
+            <strong>Votre mission, en équipe&nbsp;:</strong> doter Méridian d'une <strong>Boussole FinOps</strong> —
+            un système <strong>multi-agents</strong> sur <span class="aws-svc">Amazon Bedrock AgentCore</span> qui
+            <strong>(1)</strong> agrège les coûts de toute l'Organisation et y ajoute les signaux hors-AWS pour
+            raisonner en <strong>coût total de possession</strong>, <strong>(2)</strong> répond en langage naturel
+            aux questions de Inès et Tom, <strong>(3)</strong> <strong>anticipe</strong> les dérives budgétaires et
+            alerte avant que la facture ne dérape, et <strong>(4)</strong> <strong>passe à l'action</strong> de façon
+            sûre. Le tout construit <strong>avec Kiro</strong>.
+          </p>
+
+          <div class="info-box tip">
+            <span class="icon-bubble">★</span>
+            <div class="body">
+              <p><span class="label">Vos trois agents chez Méridian :</span>
+                <strong>Argus</strong> — l'œil aux cent regards qui voit tout, mais ne touche à rien ·
+                <strong>Sibylle</strong> — la voix qui annonce ce qui vient et donne l'alerte ·
+                <strong>Faucon</strong> — la main qui agit, mais seulement sur ordre et dans un périmètre cadenassé.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ ÉQUIPE & RÔLES ============ -->
+      <section id="equipe" aria-labelledby="equipe-title">
+        <header class="section-header">
+          <p class="section-eyebrow">Travailler ensemble</p>
+          <h2 class="section-title" id="equipe-title">Équipe &amp; répartition des rôles</h2>
+          <p class="section-lead">Cet atelier se réalise <strong>en équipe de 2 à 5 personnes</strong>. La boucle FinOps se découpe naturellement en trois rôles — un par agent.</p>
+        </header>
+
+        <div class="option-grid" style="grid-template-columns:repeat(3,1fr)">
+          <div class="option-card">
+            <span class="tag">Voir</span>
+            <h4>👁️ Équipe Argus</h4>
+            <p>Branche les <strong>sources de données</strong> comme outils et construit l'<strong>agent analyste</strong> qui répond aux questions FinOps.</p>
+          </div>
+          <div class="option-card alt">
+            <span class="tag">Anticiper</span>
+            <h4>🔮 Équipe Sibylle</h4>
+            <p>Construit l'<strong>agent prévisionniste</strong>&nbsp;: projection de fin de mois, écart au budget et <strong>alerte</strong> proactive.</p>
+          </div>
+          <div class="option-card">
+            <span class="tag">Agir</span>
+            <h4>🦅 Équipe Faucon</h4>
+            <p>Construit l'<strong>agent optimiseur</strong> sous <strong>garde-fous</strong>&nbsp;: périmètre <code>env=dev</code>, simulation et validation humaine.</p>
+          </div>
+        </div>
+
+        <div class="info-box info">
+          <span class="icon-bubble">i</span>
+          <div class="body">
+            <p><span class="label">Équipe de 2 ?</span> Traitez les agents <strong>séquentiellement</strong> dans l'ordre des étapes (Argus → Sibylle → Faucon). Les étapes 1 et 2 (socle &amp; outils) se font <strong>ensemble</strong> avant de vous répartir les agents.</p>
+          </div>
+        </div>
+        <div class="info-box tip">
+          <span class="icon-bubble">★</span>
+          <div class="body">
+            <p><span class="label">Un dépôt partagé :</span> votre équipe travaille dans un <strong>même espace de code</strong> ouvert dans <strong>Kiro</strong>. Les outils (étape 2) sont communs aux trois agents&nbsp;: construisez-les une fois, réutilisez-les partout.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ OBJECTIFS ============ -->
+      <section id="objectifs" aria-labelledby="obj-title">
+        <header class="section-header">
+          <p class="section-eyebrow">Ce que vous allez apprendre</p>
+          <h2 class="section-title" id="obj-title">Objectifs pédagogiques</h2>
+          <p class="section-lead">Cet atelier cible deux compétences&nbsp;: <strong>l'architecture FinOps agentique sur AgentCore</strong> et <strong>la construction avec Kiro</strong>.</p>
+        </header>
+
+        <ul class="objectives-list">
+          <li><span class="check">✓</span><span class="obj-text">Exposer des sources de données existantes (CloudWatch, Trusted Advisor, CUR, Organizations, API licences, on-prem) comme <strong>outils d'agent</strong> via <span class="aws-svc">AgentCore Gateway</span></span></li>
+          <li><span class="check">✓</span><span class="obj-text">Héberger des agents sur <span class="aws-svc">AgentCore Runtime</span> et conserver le contexte avec <span class="aws-svc">AgentCore Memory</span></span></li>
+          <li><span class="check">✓</span><span class="obj-text">Agréger les coûts à l'échelle d'une <strong>Organisation AWS</strong> et y intégrer des signaux <strong>non-AWS</strong> (on-prem, licences SaaS) pour raisonner en <strong>TCO</strong></span></li>
+          <li><span class="check">✓</span><span class="obj-text">Construire un agent de <strong>prévision</strong> et d'<strong>alerte proactive</strong> (projection vs budget → notification)</span></li>
+          <li><span class="check">✓</span><span class="obj-text">Encadrer un agent d'<strong>action</strong> avec <span class="aws-svc">AgentCore Policy</span> &amp; <span class="aws-svc">Identity</span>&nbsp;: périmètre par tag, simulation, <em>human-in-the-loop</em></span></li>
+          <li><span class="check">✓</span><span class="obj-text">Utiliser <strong>Kiro</strong> comme co-constructeur pour échafauder les outils, écrire la logique des agents et itérer vite</span></li>
+        </ul>
+      </section>
+
+      <!-- ============ ARCHITECTURE ============ -->
+      <section id="architecture" aria-labelledby="arch-title">
+        <header class="section-header">
+          <p class="section-eyebrow">Vue d'ensemble</p>
+          <h2 class="section-title" id="arch-title">Architecture &amp; flux multi-agents</h2>
+          <p class="section-lead">Le diagramme présente la boucle <strong>Voir → Anticiper → Agir</strong>, des sources de données jusqu'à l'action sous garde-fous.</p>
+        </header>
+
+        <figure class="architecture-frame">
+          <pre class="mermaid">
+flowchart LR
+  classDef client   fill:#5A6B87,stroke:#36465A,color:#fff;
+  classDef mgmt     fill:#E7157B,stroke:#a50d57,color:#fff;
+  classDef compute  fill:#ED7100,stroke:#b35600,color:#fff;
+  classDef ml       fill:#01A88D,stroke:#017866,color:#fff;
+  classDef appint   fill:#C925D1,stroke:#8e1a94,color:#fff;
+  classDef security fill:#DD344C,stroke:#a3162a,color:#fff;
+  classDef ext      fill:#7AA116,stroke:#55710f,color:#fff;
+
+  USER["Équipe FinOps<br/>Inès · Tom"]:::client
+  subgraph CLOUD["AWS Cloud · eu-west-1"]
+    subgraph CORE["Amazon Bedrock AgentCore"]
+      IDENTITY["Identity"]:::security
+      POLICY["Policy<br/>env=dev"]:::security
+      MEMORY["Memory"]:::ml
+      subgraph RT["Runtime"]
+        ARGUS["Argus<br/>Analyste (RO)"]:::ml
+        SIBYLLE["Sibylle<br/>Prévision"]:::ml
+        FAUCON["Faucon<br/>Optimiseur"]:::ml
+      end
+      GATEWAY["Gateway<br/>outils MCP"]:::appint
+    end
+    subgraph TOOLS["Outils (Lambda)"]
+      T_DATA["CloudWatch · CUR<br/>Organizations · Trusted Advisor"]:::compute
+      T_LIC["Licences (API ext.)"]:::compute
+      T_OP["OnPrem (simulé)"]:::compute
+      T_NOTIF["Notification"]:::compute
+      T_REM["Remediation<br/>stop EC2/RDS"]:::compute
+    end
+    ORG["Organizations / CUR"]:::mgmt
+    CW["CloudWatch"]:::mgmt
+    SNS["Amazon SNS"]:::appint
+    FLEET["EC2 / RDS<br/>env=dev"]:::compute
+  end
+  LICAPI["API externe<br/>licences SaaS"]:::ext
+
+  USER -->|1 question/commande| IDENTITY
+  IDENTITY --> RT
+  ARGUS <-->|2 contexte| MEMORY
+  RT -->|3 appel d'outil| GATEWAY
+  GATEWAY --> TOOLS
+  T_DATA --> ORG
+  T_DATA --> CW
+  T_LIC --> LICAPI
+  T_NOTIF --> SNS
+  T_REM --> FLEET
+  SIBYLLE -->|4 projette & alerte| T_NOTIF
+  SNS -.->|5 alerte / validation| USER
+  FAUCON -->|6 action| POLICY
+  POLICY -->|7 si env=dev| T_REM
+          </pre>
+          <figcaption class="caption">Système multi-agents <span class="aws-svc">AgentCore</span> — <strong>Argus</strong> (analyse) · <strong>Sibylle</strong> (prévision &amp; alerte via <span class="aws-svc">SNS</span>) · <strong>Faucon</strong> (action sous <span class="aws-svc">Policy</span>), tous reliés aux sources via <span class="aws-svc">Gateway</span>.</figcaption>
+        </figure>
+
+        <div class="info-box info">
+          <span class="icon-bubble">i</span>
+          <div class="body">
+            <p><span class="label">Ce que VOUS construisez :</span> la <strong>logique des 3 agents</strong> et de leurs <strong>outils</strong> (via Gateway). Le formateur a déjà déployé le socle <span class="aws-svc">AgentCore</span>, les rôles IAM, <span class="aws-svc">SNS</span> et le parc de démonstration <code>env=dev</code>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ PRE-FLIGHT ============ -->
+      <section id="pre-flight" aria-labelledby="pre-title">
+        <header class="section-header">
+          <p class="section-eyebrow">Préparation</p>
+          <h2 class="section-title" id="pre-title">Avant de commencer</h2>
+          <p class="section-lead">Quelques repères pour que tout se passe bien, en équipe.</p>
+        </header>
+
+        <div class="info-box info">
+          <span class="icon-bubble">i</span>
+          <div class="body">
+            <p><span class="label">Région :</span> placez-vous dans <code>eu-west-1</code> (Irlande) et restez-y pour tout l'atelier.</p>
+          </div>
+        </div>
+
+        <div class="info-box tip">
+          <span class="icon-bubble">★</span>
+          <div class="body">
+            <p><span class="label">Préfixe d'équipe :</span> le formateur vous a attribué un préfixe <code>${EQUIPE}</code> (ex. <code>team-01</code>). Toutes vos ressources le portent — c'est ainsi que les équipes restent isolées. <strong>Aucun identifiant individuel n'est nécessaire.</strong></p>
+          </div>
+        </div>
+
+        <div class="info-box warning">
+          <span class="icon-bubble">!</span>
+          <div class="body">
+            <p><span class="label">Vous ne touchez pas à l'infra :</span> le socle (AgentCore, IAM, SNS, parc de démo) est <strong>pré-déployé par le formateur via Terraform</strong>. Vous n'exécutez <strong>jamais</strong> de Terraform et ne devez rencontrer <strong>aucune</strong> erreur <em>Access Denied</em>. Vous complétez uniquement la <strong>logique</strong> des agents et des outils, avec Kiro.</p>
+          </div>
+        </div>
+
+        <div class="info-box tip">
+          <span class="icon-bubble">★</span>
+          <div class="body">
+            <p><span class="label">Données de l'atelier :</span> les coûts AWS, on-prem et licences sont des <strong>jeux de données simulés</strong> représentatifs de Méridian — réalistes mais sans risque ni dérive de coût.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 1 — Prendre en main AgentCore + Kiro                    -->
+      <!-- ============================================================ -->
+      <section id="task-1" aria-labelledby="task-1-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">1</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 1 · ensemble</p>
+              <h3 id="task-1-title">Prendre en main <span class="aws-svc">AgentCore</span> &amp; <span class="aws-svc">Kiro</span></h3>
+            </div>
+            <button class="complete-toggle" data-task="1" type="button" aria-label="Marquer l'étape 1 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Avant de construire, l'équipe au complet fait le tour du <strong>socle</strong> déjà déployé&nbsp;: les
+              briques <span class="aws-svc">Amazon Bedrock AgentCore</span> (Runtime, Gateway, Memory, Identity,
+              Observability, Policy) et l'<strong>espace de code</strong> ouvert dans <span class="aws-svc">Kiro</span>,
+              où vivent les coquilles des agents et des outils.
+            </p>
+
+            <div class="svc-chips">
+              <span class="svc-chip"><span class="dot dot-ml"></span> AgentCore Runtime</span>
+              <span class="svc-chip"><span class="dot dot-appint"></span> AgentCore Gateway</span>
+              <span class="svc-chip"><span class="dot dot-ml"></span> Memory</span>
+              <span class="svc-chip"><span class="dot dot-network"></span> Identity</span>
+              <span class="svc-chip"><span class="dot dot-network"></span> Policy</span>
+              <span class="svc-chip"><span class="dot dot-ml"></span> Observability</span>
+            </div>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li>Ouvrir la console <span class="aws-svc">Amazon Bedrock AgentCore</span> (région <code>eu-west-1</code>) et repérer les ressources préfixées <code>${EQUIPE}</code>.</li>
+              <li>Ouvrir l'espace de code de l'équipe dans <span class="aws-svc">Kiro</span> et localiser les dossiers <code>agents/</code> et <code>tools/</code>.</li>
+              <li>Lancer une première conversation avec <span class="aws-svc">Kiro</span> pour qu'il vous explique l'arborescence du projet.</li>
+            </ol>
+
+            <div class="info-box info">
+              <span class="icon-bubble">i</span>
+              <div class="body"><p><span class="label">Six briques, un rôle chacune :</span> <strong>Runtime</strong> héberge les agents · <strong>Gateway</strong> transforme APIs/Lambda en outils · <strong>Memory</strong> garde le contexte · <strong>Identity</strong> authentifie · <strong>Policy</strong> encadre les actions · <strong>Observability</strong> trace tout dans <span class="aws-svc">CloudWatch</span>.</p></div>
+            </div>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Socle en main.</strong> L'équipe sait où se trouvent les agents, les outils et les briques AgentCore.</span>
+            </div>
+
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-1-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span><span class="label-text">Afficher les instructions détaillées</span><br><span class="hint">Tour du socle + premier prompt Kiro</span></span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="expand-content" id="task-1-details" role="region" aria-label="Instructions détaillées de l'étape 1">
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 1.1 — Visiter le socle AgentCore</h4>
+                  <ol class="steps">
+                    <li>Console AWS → recherchez <span class="ui">Bedrock AgentCore</span>. Vérifiez la région <code>eu-west-1</code>.</li>
+                    <li>Dans <span class="ui">Runtime</span>, repérez les trois agents pré-créés&nbsp;: <span class="val-pill">${EQUIPE}-argus</span>, <span class="val-pill">${EQUIPE}-sibylle</span>, <span class="val-pill">${EQUIPE}-faucon</span>.</li>
+                    <li>Dans <span class="ui">Gateway</span>, repérez la gateway <span class="val-pill">${EQUIPE}-finops-gw</span> et la liste (encore vide) des outils à brancher.</li>
+                  </ol>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 1.2 — Ouvrir le projet dans Kiro</h4>
+                  <ol class="steps">
+                    <li>Ouvrez le dossier du projet d'équipe dans <span class="aws-svc">Kiro</span>.</li>
+                    <li>Repérez l'arborescence&nbsp;: <code>tools/</code> (un fichier par source de données), <code>agents/</code> (un sous-dossier par agent), et <code>tests/</code>.</li>
+                    <li>Dans le chat <span class="aws-svc">Kiro</span>, demandez par exemple&nbsp;:</li>
+                  </ol>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Prompt · Kiro</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>Explique-moi l'arborescence de ce projet : à quoi servent les dossiers
+tools/, agents/ et tests/ ? Quels TODO restent à compléter pour Argus ?</code></pre>
+                  </div>
+                  <div class="info-box tip">
+                    <span class="icon-bubble">★</span>
+                    <div class="body"><p><span class="label">Réflexe d'équipe :</span> utilisez Kiro pour <strong>cartographier</strong> le code avant de coder. Il lit le dépôt et vous oriente vers les bons fichiers — c'est votre co-constructeur, pas un simple autocomplete.</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 2 — Outils via Gateway                                  -->
+      <!-- ============================================================ -->
+      <section id="task-2" aria-labelledby="task-2-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">2</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 2 · ensemble · socle commun</p>
+              <h3 id="task-2-title">Exposer les sources comme <span class="val-pill">outils</span> via <span class="aws-svc">Gateway</span></h3>
+            </div>
+            <button class="complete-toggle" data-task="2" type="button" aria-label="Marquer l'étape 2 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Les trois agents partagent les mêmes <strong>outils</strong>. Vous les construisez <strong>une fois</strong>,
+              en équipe&nbsp;: des fonctions <span class="aws-svc">AWS Lambda</span> exposées comme outils via
+              <span class="aws-svc">AgentCore Gateway</span>. Chaque outil renvoie un <strong>JSON propre</strong> que
+              n'importe quel agent pourra consommer.
+            </p>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li>Compléter les outils de <strong>coût</strong>&nbsp;: <span class="val-pill">cur</span>, <span class="val-pill">organizations</span>.</li>
+              <li>Compléter les outils d'<strong>utilisation</strong>&nbsp;: <span class="val-pill">cloudwatch</span>, <span class="val-pill">trusted_advisor</span> (checks gratuits uniquement).</li>
+              <li>Compléter les outils <strong>hors-AWS</strong>&nbsp;: <span class="val-pill">licences</span> (API externe) et <span class="val-pill">onprem</span> (jeu simulé).</li>
+              <li><strong>Enregistrer</strong> chaque outil dans la Gateway et le tester depuis le bac à sable d'outils.</li>
+            </ol>
+
+            <div class="info-box warning">
+              <span class="icon-bubble">!</span>
+              <div class="body"><p><span class="label">Trusted Advisor :</span> n'appelez <strong>que les checks gratuits</strong>. Les checks payants exigent un plan de support Business/Entreprise et sont <strong>hors périmètre</strong> de l'atelier.</p></div>
+            </div>
+
+            <div class="info-box info">
+              <span class="icon-bubble">i</span>
+              <div class="body"><p><span class="label">Contrat de sortie :</span> chaque outil renvoie un JSON normalisé, p.&nbsp;ex. <code>{ "source": "cur", "period": "...", "items": [ { "account", "service", "amount" } ] }</code>. Un format commun = des agents plus simples à écrire.</p></div>
+            </div>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Boîte à outils prête.</strong> Les six sources sont branchées dans Gateway et testées.</span>
+            </div>
+
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-2-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span><span class="label-text">Afficher les instructions détaillées</span><br><span class="hint">Compléter les outils avec Kiro + enregistrement Gateway</span></span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="expand-content" id="task-2-details" role="region" aria-label="Instructions détaillées de l'étape 2">
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 2.1 — Compléter un outil de coût (CUR) avec Kiro</h4>
+                  <ol class="steps">
+                    <li>Ouvrez <code>tools/cur.py</code> dans <span class="aws-svc">Kiro</span> et repérez le <code># TODO</code>.</li>
+                    <li>Demandez à Kiro de générer le corps de la fonction à partir du contrat de sortie&nbsp;:</li>
+                  </ol>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Prompt · Kiro</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>Complète tools/cur.py : la fonction doit lire le jeu de données CUR simulé
+(data/cur.json), agréger les coûts par compte et par service sur la période
+demandée, et renvoyer { source, period, items:[{account, service, amount}] }
+trié par amount décroissant. Ajoute la gestion d'erreur si la période est absente.</code></pre>
+                  </div>
+                  <div class="info-box tip">
+                    <span class="icon-bubble">★</span>
+                    <div class="body"><p>Relisez la proposition de Kiro <strong>avant</strong> de l'accepter. Demandez-lui d'<em>expliquer</em> son code ou de le simplifier&nbsp;: c'est l'occasion de monter en compétence, pas seulement de copier.</p></div>
+                  </div>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 2.2 — L'outil hors-AWS (licences via API externe)</h4>
+                  <ol class="steps">
+                    <li>Ouvrez <code>tools/licences.py</code>&nbsp;: il appelle une <strong>API externe</strong> qui liste les abonnements SaaS (observabilité, <em>data</em>, design, CI/CD) et leurs coûts mensuels.</li>
+                    <li>Complétez l'appel HTTP et le mapping vers le contrat de sortie commun.</li>
+                  </ol>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Python · tools/licences.py</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>def get_licence_costs(period):
+    resp = requests.get(f"{LICENCE_API_URL}/subscriptions", timeout=5)
+    if resp.status_code != 200:
+        return {"source": "licences", "error": f"API licences: HTTP {resp.status_code}"}
+    items = [
+        {"account": s["vendor"], "service": s["product"], "amount": s["monthly_cost"]}
+        for s in resp.json()["subscriptions"]
+    ]
+    return {"source": "licences", "period": period, "items": items}</code></pre>
+                  </div>
+                  <div class="info-box warning">
+                    <span class="icon-bubble">!</span>
+                    <div class="body"><p><span class="label">Gestion d'erreur exigée :</span> si l'API externe échoue, l'outil renvoie un message d'erreur <strong>descriptif</strong> — jamais une exception brute. L'agent saura ainsi signaler la source manquante.</p></div>
+                  </div>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 2.3 — Enregistrer les outils dans Gateway &amp; tester</h4>
+                  <ol class="steps">
+                    <li>Dans la console <span class="ui">AgentCore Gateway</span> → <span class="val-pill">${EQUIPE}-finops-gw</span> → <span class="ui">Add target</span>, reliez chaque Lambda comme cible d'outil (le schéma d'entrée/sortie est déjà fourni).</li>
+                    <li>Depuis le <strong>bac à sable d'outils</strong> de la Gateway, invoquez <span class="val-pill">cur</span> avec <code>{ "period": "2026-05" }</code> et vérifiez le JSON renvoyé.</li>
+                    <li>Répétez pour <span class="val-pill">cloudwatch</span>, <span class="val-pill">trusted_advisor</span>, <span class="val-pill">organizations</span>, <span class="val-pill">licences</span>, <span class="val-pill">onprem</span>.</li>
+                  </ol>
+                  <div class="info-box info">
+                    <span class="icon-bubble">i</span>
+                    <div class="body"><p>Gateway centralise l'<strong>authentification</strong> et l'<strong>observabilité</strong> des outils&nbsp;: une fois branchés ici, les trois agents y accèdent de la même manière, sans gérer de credentials.</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 3 — Argus (Analyste)                                    -->
+      <!-- ============================================================ -->
+      <section id="task-3" aria-labelledby="task-3-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">3</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 3 · équipe Argus 👁️</p>
+              <h3 id="task-3-title"><span class="val-pill">Argus</span> — l'Agent Analyste (lecture seule)</h3>
+            </div>
+            <button class="complete-toggle" data-task="3" type="button" aria-label="Marquer l'étape 3 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              Donnez à <strong>Argus</strong> la capacité de répondre en langage naturel aux questions FinOps de
+              Inès et Tom. Argus <strong>raisonne</strong>, choisit les bons outils, agrège AWS + on-prem + licences,
+              et répond — <strong>sans jamais modifier de ressource</strong>.
+            </p>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li>Rédiger le <strong>system prompt</strong> d'Argus (rôle, ton, lecture seule, citation des sources).</li>
+              <li>Déclarer les <strong>outils</strong> qu'Argus peut appeler (les six de l'étape 2).</li>
+              <li>Implémenter les 4 intentions clés&nbsp;: top dépenses, anomalies, ressources sous-utilisées, top 5 actions.</li>
+              <li>Brancher <span class="aws-svc">AgentCore Memory</span> pour le contexte de conversation, puis tester.</li>
+            </ol>
+
+            <div class="info-box info">
+              <span class="icon-bubble">i</span>
+              <div class="body"><p><span class="label">Les 4 questions de référence :</span> « <em>Quels sont nos principaux postes de dépense ce mois-ci&nbsp;?</em> » · « <em>Y a-t-il des anomalies&nbsp;?</em> » · « <em>Quelles ressources sont sous-utilisées&nbsp;?</em> » · « <em>Donne-moi les 5 actions d'optimisation prioritaires.</em> »</p></div>
+            </div>
+
+            <div class="info-box warning">
+              <span class="icon-bubble">!</span>
+              <div class="body"><p><span class="label">Lecture seule, strictement :</span> Argus ne dispose <strong>d'aucun</strong> outil d'action. S'il identifie une optimisation, il la <em>recommande</em> — c'est Faucon (étape 5) qui l'exécutera.</p></div>
+            </div>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Argus opérationnel.</strong> Il répond aux 4 questions FinOps en citant ses sources.</span>
+            </div>
+
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-3-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span><span class="label-text">Afficher les instructions détaillées</span><br><span class="hint">System prompt, outils, intentions, mémoire</span></span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="expand-content" id="task-3-details" role="region" aria-label="Instructions détaillées de l'étape 3">
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 3.1 — Rédiger le system prompt avec Kiro</h4>
+                  <ol class="steps">
+                    <li>Ouvrez <code>agents/argus/prompt.md</code>.</li>
+                    <li>Demandez à Kiro de rédiger un prompt clair&nbsp;:</li>
+                  </ol>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Prompt · Kiro</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>Rédige le system prompt de l'agent FinOps "Argus" : analyste en LECTURE SEULE
+pour le Groupe Méridian. Il doit choisir parmi les outils {cloudwatch,
+trusted_advisor, cur, organizations, licences, onprem}, raisonner en coût total
+de possession (AWS + on-prem + licences), TOUJOURS citer les sources utilisées,
+et ne JAMAIS proposer d'exécuter une action (il recommande seulement).</code></pre>
+                  </div>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 3.2 — Déclarer les outils &amp; les intentions</h4>
+                  <ol class="steps">
+                    <li>Dans <code>agents/argus/agent.py</code>, déclarez les six outils de la Gateway.</li>
+                    <li>Complétez les <code># TODO</code> des quatre intentions. Exemple pour le top des dépenses&nbsp;:</li>
+                  </ol>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Python · agents/argus/agent.py</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>def top_spend(period):
+    aws = gateway.invoke("organizations", {"period": period})["items"]
+    lic = gateway.invoke("licences", {"period": period})["items"]
+    onp = gateway.invoke("onprem", {"period": period})["items"]
+    allitems = aws + lic + onp
+    allitems.sort(key=lambda x: x["amount"], reverse=True)
+    return {"period": period, "top": allitems[:10],
+            "sources": ["organizations", "licences", "onprem"]}</code></pre>
+                  </div>
+                  <div class="info-box tip">
+                    <span class="icon-bubble">★</span>
+                    <div class="body"><p>Pour les <strong>anomalies</strong> et les <strong>ressources sous-utilisées</strong>, demandez à Kiro de générer la logique de seuil (variation &gt; X&nbsp;% pour les anomalies, utilisation CPU &lt; Y&nbsp;% pour les ressources sous-utilisées).</p></div>
+                  </div>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 3.3 — Mémoire &amp; test conversationnel</h4>
+                  <ol class="steps">
+                    <li>Activez <span class="aws-svc">AgentCore Memory</span> sur Argus pour qu'il garde le fil (ex. « <em>et le mois dernier&nbsp;?</em> » après une première question).</li>
+                    <li>Déployez sur <span class="aws-svc">Runtime</span> et testez les 4 questions de référence depuis la console.</li>
+                    <li>Vérifiez dans <span class="aws-svc">AgentCore Observability</span> la <strong>trace</strong>&nbsp;: quels outils Argus a appelés, dans quel ordre.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 4 — Sibylle (Prévisionniste)                            -->
+      <!-- ============================================================ -->
+      <section id="task-4" aria-labelledby="task-4-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">4</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 4 · équipe Sibylle 🔮</p>
+              <h3 id="task-4-title"><span class="val-pill">Sibylle</span> — l'Agent Prévisionniste &amp; alerte</h3>
+            </div>
+            <button class="complete-toggle" data-task="4" type="button" aria-label="Marquer l'étape 4 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              <strong>Sibylle</strong> ne se contente pas de regarder le passé&nbsp;: elle <strong>anticipe</strong>.
+              Elle projette la dépense de fin de mois à partir des tendances du CUR, la compare au <strong>budget</strong>,
+              et <strong>alerte proactivement</strong> via <span class="aws-svc">Amazon SNS</span> quand ça dérape.
+              Elle peut tourner en tâche <strong>planifiée</strong> sur le Runtime.
+            </p>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li>Implémenter la <strong>projection</strong> de fin de mois (extrapolation de la tendance CUR).</li>
+              <li>Comparer au <strong>budget</strong> et calculer l'<strong>écart</strong>.</li>
+              <li>Émettre une <strong>alerte</strong> via l'<span class="val-pill">Outil Notification</span> (→ SNS) au-delà d'un seuil.</li>
+              <li>Configurer une exécution <strong>asynchrone / planifiée</strong> sur <span class="aws-svc">AgentCore Runtime</span>.</li>
+            </ol>
+
+            <div class="info-box info">
+              <span class="icon-bubble">i</span>
+              <div class="body"><p><span class="label">Contenu de l'alerte :</span> compte ou service concerné, <strong>montant projeté</strong> de fin de mois, et <strong>écart au budget</strong>. Une alerte utile dit <em>où</em> regarder, pas seulement « ça dérape ».</p></div>
+            </div>
+
+            <div class="info-box warning">
+              <span class="icon-bubble">!</span>
+              <div class="body"><p><span class="label">Sibylle n'agit pas :</span> elle <strong>prévoit</strong> et <strong>alerte</strong>. Aucune ressource n'est modifiée. L'action reste le domaine exclusif de Faucon, sous garde-fous.</p></div>
+            </div>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Sibylle opérationnelle.</strong> Elle projette, compare au budget et alerte avant la dérive.</span>
+            </div>
+
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-4-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span><span class="label-text">Afficher les instructions détaillées</span><br><span class="hint">Projection, seuil, alerte SNS, planification</span></span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="expand-content" id="task-4-details" role="region" aria-label="Instructions détaillées de l'étape 4">
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 4.1 — Projeter la dépense avec Kiro</h4>
+                  <ol class="steps">
+                    <li>Ouvrez <code>agents/sibylle/forecast.py</code>.</li>
+                    <li>Demandez à Kiro une projection simple, lisible et expliquée&nbsp;:</li>
+                  </ol>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Prompt · Kiro</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>Dans forecast.py, écris project_month_end(cur_items, day_of_month, days_in_month) :
+extrapole linéairement la dépense de fin de mois à partir du cumulé à ce jour
+(montant_à_ce_jour / day_of_month * days_in_month), par service. Renvoie une liste
+{service, spent_so_far, projected_total}. Commente la formule.</code></pre>
+                  </div>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 4.2 — Comparer au budget &amp; alerter</h4>
+                  <ol class="steps">
+                    <li>Chargez les budgets depuis <code>data/budgets.json</code> et calculez l'écart projeté.</li>
+                    <li>Au-delà du seuil (p.&nbsp;ex. <strong>+15&nbsp;%</strong>), appelez l'outil de notification&nbsp;:</li>
+                  </ol>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Python · agents/sibylle/agent.py</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>for f in forecasts:
+    budget = budgets.get(f["service"], 0)
+    overrun = (f["projected_total"] - budget) / budget if budget else 0
+    if overrun > ALERT_THRESHOLD:  # ex. 0.15
+        gateway.invoke("notification", {
+            "subject": f"Dérive budgétaire — {f['service']}",
+            "message": f"Projection fin de mois: {f['projected_total']:.0f}€ "
+                       f"(budget {budget:.0f}€, écart +{overrun*100:.0f}%)",
+        })</code></pre>
+                  </div>
+                  <div class="info-box tip">
+                    <span class="icon-bubble">★</span>
+                    <div class="body"><p>Abonnez votre adresse e-mail (ou celle de l'équipe) au topic <span class="aws-svc">SNS</span> <span class="val-pill">${EQUIPE}-finops-alerts</span> pour <strong>recevoir réellement</strong> l'alerte pendant le test.</p></div>
+                  </div>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 4.3 — Exécution planifiée</h4>
+                  <ol class="steps">
+                    <li>Déployez Sibylle sur <span class="aws-svc">Runtime</span> en mode <strong>asynchrone</strong>.</li>
+                    <li>Le socle fournit un déclencheur planifié (quotidien). Lancez une exécution manuelle pour valider, puis observez la trace dans <span class="aws-svc">Observability</span>.</li>
+                  </ol>
+                  <div class="info-box info">
+                    <span class="icon-bubble">i</span>
+                    <div class="body"><p>Le <span class="aws-svc">Runtime</span> d'AgentCore gère aussi bien les agents <strong>conversationnels</strong> (Argus) que les agents <strong>planifiés / asynchrones</strong> (Sibylle) — c'est la même brique d'hébergement.</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 5 — Faucon (Optimiseur) — CŒUR de l'atelier             -->
+      <!-- ============================================================ -->
+      <section id="task-5" aria-labelledby="task-5-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">5</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 5 · équipe Faucon 🦅 · le cœur de l'atelier</p>
+              <h3 id="task-5-title"><span class="val-pill">Faucon</span> — l'Agent Optimiseur sous garde-fous</h3>
+            </div>
+            <button class="complete-toggle" data-task="5" type="button" aria-label="Marquer l'étape 5 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              <strong>Faucon</strong> est le seul agent qui <strong>agit</strong>. Il arrête les instances
+              <span class="aws-svc">EC2</span> et <span class="aws-svc">RDS</span> inutilisées — mais
+              <strong>uniquement</strong> celles taguées <code>env=dev</code>, après une <strong>simulation</strong>
+              et une <strong>validation humaine</strong>. Toute la difficulté (et tout l'intérêt) est ici&nbsp;:
+              construire un agent d'action <strong>digne de confiance</strong>.
+            </p>
+
+            <div class="info-box warning">
+              <span class="icon-bubble">!</span>
+              <div class="body"><p><span class="label">Trois garde-fous, non négociables :</span> <strong>(1)</strong> périmètre verrouillé par le tag <code>env=dev</code> via <span class="aws-svc">AgentCore Policy</span> · <strong>(2)</strong> <em>dry-run</em> obligatoire avant toute exécution · <strong>(3)</strong> validation humaine explicite (<em>human-in-the-loop</em>).</p></div>
+            </div>
+
+            <p class="subtasks-title">Sous-tâches</p>
+            <ol class="subtasks">
+              <li>Implémenter la <strong>vérification du tag</strong> <code>env=dev</code> avant toute action.</li>
+              <li>Implémenter le <strong>Mode Simulation</strong> (<em>dry-run</em>)&nbsp;: lister les ressources qui <em>seraient</em> arrêtées.</li>
+              <li>Brancher la <strong>validation humaine</strong> (approbation via SNS) avant l'exécution réelle.</li>
+              <li>Exécuter via l'<span class="val-pill">Outil Remediation</span> et <strong>journaliser</strong> l'action.</li>
+              <li>Vérifier que <span class="aws-svc">AgentCore Policy</span> <strong>refuse</strong> toute cible hors <code>env=dev</code>.</li>
+            </ol>
+
+            <div class="info-box info">
+              <span class="icon-bubble">i</span>
+              <div class="body"><p><span class="label">Défense en profondeur :</span> même si le prompt de Faucon « dérapait », <span class="aws-svc">AgentCore Policy</span> s'exécute <strong>en dehors</strong> de l'agent et le rôle IAM (posé par le formateur) ne permet d'arrêter <strong>que</strong> des ressources <code>env=dev</code>. Trois couches, pas une.</p></div>
+            </div>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Faucon opérationnel &amp; sûr.</strong> Il n'agit que sur <code>env=dev</code>, après simulation et validation.</span>
+            </div>
+
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-5-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span><span class="label-text">Afficher les instructions détaillées</span><br><span class="hint">Tag, dry-run, human-in-the-loop, Policy</span></span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="expand-content" id="task-5-details" role="region" aria-label="Instructions détaillées de l'étape 5">
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 5.1 — Vérifier le tag de périmètre</h4>
+                  <ol class="steps">
+                    <li>Ouvrez <code>tools/remediation.py</code>.</li>
+                    <li>Avant toute action, refusez toute ressource ne portant pas <code>env=dev</code>&nbsp;:</li>
+                  </ol>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Python · tools/remediation.py</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>def _in_scope(resource):
+    return resource.get("tags", {}).get("env") == "dev"
+
+def stop_resources(targets, dry_run=True):
+    refused = [t for t in targets if not _in_scope(t)]
+    allowed = [t for t in targets if _in_scope(t)]
+    if refused:
+        # on n'agit JAMAIS partiellement en silence : on signale les refus
+        return {"refused": [t["id"] for t in refused],
+                "reason": "hors périmètre (tag env!=dev)", "allowed": [t["id"] for t in allowed]}
+    ...</code></pre>
+                  </div>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 5.2 — Mode Simulation (dry-run) d'abord</h4>
+                  <ol class="steps">
+                    <li>Par défaut, <code>dry_run=True</code>&nbsp;: l'outil <strong>retourne la liste</strong> des ressources qui seraient arrêtées, sans rien arrêter.</li>
+                    <li>Faucon présente cette liste à l'humain et demande confirmation.</li>
+                  </ol>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Python · tools/remediation.py</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>    if dry_run:
+        return {"dry_run": True, "would_stop": [t["id"] for t in allowed]}
+    results = [{"id": t["id"], "stopped": _stop(t)} for t in allowed]
+    audit_log(action="stop", results=results)   # traçabilité
+    return {"dry_run": False, "stopped": results}</code></pre>
+                  </div>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 5.3 — Validation humaine (human-in-the-loop)</h4>
+                  <ol class="steps">
+                    <li>Dans <code>agents/faucon/agent.py</code>, après le dry-run, déclenchez une <strong>demande de validation</strong> via SNS et <strong>attendez</strong> l'approbation avant d'appeler l'outil avec <code>dry_run=False</code>.</li>
+                    <li>Si la validation n'est pas accordée, <strong>annulez</strong>&nbsp;: aucune ressource n'est touchée.</li>
+                  </ol>
+                  <div class="info-box tip">
+                    <span class="icon-bubble">★</span>
+                    <div class="body"><p>Demandez à Kiro&nbsp;: « <em>Ajoute une étape de validation humaine&nbsp;: publie le résumé du dry-run sur SNS, puis n'exécute l'arrêt que si la réponse d'approbation est reçue. Sinon, journalise une annulation.</em> »</p></div>
+                  </div>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 5.4 — Tester la Policy (le test qui doit échouer)</h4>
+                  <ol class="steps">
+                    <li>Demandez explicitement à Faucon d'arrêter une instance <strong>de production</strong> (taguée <code>env=prod</code>).</li>
+                    <li>Vérifiez qu'il <strong>refuse</strong>, que <span class="aws-svc">AgentCore Policy</span> bloque, et que la trace <span class="aws-svc">Observability</span> montre le refus.</li>
+                  </ol>
+                  <div class="info-box warning">
+                    <span class="icon-bubble">!</span>
+                    <div class="body"><p><span class="label">Leçon réelle :</span> un agent d'action ne se valide pas seulement quand il <em>réussit</em> une action légitime — il se valide surtout quand il <strong>refuse</strong> une action dangereuse. Ce test « négatif » est le plus important de l'atelier.</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TASK 6 — Orchestrer & tester de bout en bout                 -->
+      <!-- ============================================================ -->
+      <section id="task-6" aria-labelledby="task-6-title">
+        <article class="task-card">
+          <header class="task-header">
+            <div class="task-number">6</div>
+            <div class="task-title-block">
+              <p class="eyebrow">Étape 6 · ensemble</p>
+              <h3 id="task-6-title">Orchestrer les trois agents &amp; tester de bout en bout</h3>
+            </div>
+            <button class="complete-toggle" data-task="6" type="button" aria-label="Marquer l'étape 6 comme terminée">
+              <span class="check-icon">✓</span><span class="label-text">Marquer comme terminée</span>
+            </button>
+          </header>
+
+          <div class="task-body">
+            <p class="task-intro">
+              L'équipe se retrouve&nbsp;: il est temps de faire <strong>tourner la boucle complète</strong>
+              <strong>Voir → Anticiper → Agir</strong> et de jouer le scénario de Méridian de A à Z, comme si Inès
+              et Tom étaient dans la pièce.
+            </p>
+
+            <p class="subtasks-title">Scénario de bout en bout</p>
+            <ol class="subtasks">
+              <li><strong>Voir</strong>&nbsp;: demandez à <span class="val-pill">Argus</span> les 5 actions d'optimisation prioritaires et le TCO du mois.</li>
+              <li><strong>Anticiper</strong>&nbsp;: déclenchez <span class="val-pill">Sibylle</span> et confirmez la réception d'une <strong>alerte</strong> de dérive budgétaire.</li>
+              <li><strong>Agir</strong>&nbsp;: transmettez une action d'Argus à <span class="val-pill">Faucon</span> → dry-run → validation → arrêt des instances <code>env=dev</code>.</li>
+              <li><strong>Vérifier</strong>&nbsp;: contrôlez les traces dans <span class="aws-svc">Observability</span> et le journal d'audit de Faucon.</li>
+            </ol>
+
+            <div class="info-box info">
+              <span class="icon-bubble">i</span>
+              <div class="body"><p><span class="label">Passage de relais :</span> faites passer le top&nbsp;5 d'Argus à Faucon. La recommandation de l'un devient l'action (sous garde-fous) de l'autre&nbsp;: c'est la boucle FinOps qui se referme.</p></div>
+            </div>
+
+            <div class="info-box tip">
+              <span class="icon-bubble">★</span>
+              <div class="body"><p><span class="label">Restitution d'équipe :</span> préparez une mini-démo de 3 minutes pour les autres équipes&nbsp;: une question à Argus, une alerte de Sibylle, une action validée de Faucon. C'est votre « comité de direction » à vous.</p></div>
+            </div>
+
+            <div class="congrats">
+              <span class="badge">★</span>
+              <span><strong>Bravo&nbsp;!</strong> Votre Boussole FinOps voit, anticipe et agit — de bout en bout.</span>
+            </div>
+
+            <div class="expand-zone">
+              <button class="expand-toggle" type="button" aria-expanded="false" aria-controls="task-6-details">
+                <span class="label-block">
+                  <span class="icon-bubble">▾</span>
+                  <span><span class="label-text">Afficher les instructions détaillées</span><br><span class="hint">Jouer le scénario complet + vérifications</span></span>
+                </span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="expand-content" id="task-6-details" role="region" aria-label="Instructions détaillées de l'étape 6">
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 6.1 — Jouer le dialogue avec Argus</h4>
+                  <ol class="steps">
+                    <li>Depuis la console <span class="aws-svc">Runtime</span> (ou un client de test), enchaînez les questions&nbsp;:</li>
+                  </ol>
+                  <div class="code-block">
+                    <div class="code-head"><span class="lang">Conversation · Argus</span><button class="code-copy" type="button">Copier</button></div>
+                    <pre><code>1) « Quel est notre coût total de possession ce mois-ci, AWS + on-prem + licences ? »
+2) « Où sont les anomalies ? »
+3) « Quelles ressources dev sont sous-utilisées ? »
+4) « Donne-moi les 5 actions d'optimisation prioritaires. »</code></pre>
+                  </div>
+                  <ol class="steps" start="2">
+                    <li>Vérifiez qu'Argus <strong>cite ses sources</strong> et reste en lecture seule.</li>
+                  </ol>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 6.2 — Déclencher Sibylle puis Faucon</h4>
+                  <ol class="steps">
+                    <li>Lancez Sibylle&nbsp;: confirmez la réception de l'e-mail d'alerte SNS (compte/service, montant projeté, écart).</li>
+                    <li>Demandez à Faucon d'appliquer l'action n°1 d'Argus. Observez l'enchaînement&nbsp;: <strong>dry-run → demande de validation → exécution</strong>.</li>
+                    <li>Approuvez, puis vérifiez que les instances <code>env=dev</code> visées sont bien <strong>stopped</strong>.</li>
+                  </ol>
+                </div>
+                <div class="detailed-step-group">
+                  <h4 class="step-group-title">Tâche 6.3 — Vérifier traces &amp; audit</h4>
+                  <ol class="steps">
+                    <li>Dans <span class="aws-svc">AgentCore Observability</span>, ouvrez les traces des trois agents&nbsp;: appels d'outils, latences, décisions de Policy.</li>
+                    <li>Ouvrez le <strong>journal d'audit</strong> de Faucon&nbsp;: chaque action exécutée y figure avec sa ressource et son résultat.</li>
+                  </ol>
+                  <div class="info-box info">
+                    <span class="icon-bubble">i</span>
+                    <div class="body"><p><span class="label">Rien à déployer côté infra :</span> ce test valide que <strong>votre</strong> logique d'agents et <strong>vos</strong> outils fonctionnent ensemble sur le socle pré-déployé.</p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============ CONCLUSION ============ -->
+      <section id="conclusion" aria-labelledby="conclusion-title">
+        <div class="conclusion">
+          <h2 id="conclusion-title"><span class="accent">Bravo&nbsp;!</span> Votre équipe a construit la Boussole FinOps</h2>
+          <p class="conclusion-lead">Vous avez conçu un système FinOps multi-agents <em>réaliste</em>, qui dépasse l'analyse de coût AWS native — et vous l'avez fait à plusieurs, avec Kiro.</p>
+          <ul class="conclusion-list">
+            <li><span class="check">✓</span><span>Exposé six sources de données (AWS &amp; hors-AWS) comme <strong>outils</strong> via <span class="aws-svc">AgentCore Gateway</span>.</span></li>
+            <li><span class="check">✓</span><span>Construit <strong>Argus</strong>, un analyste en <strong>lecture seule</strong> raisonnant en <strong>coût total de possession</strong> multi-comptes + on-prem + licences.</span></li>
+            <li><span class="check">✓</span><span>Construit <strong>Sibylle</strong>, qui <strong>projette</strong> la dépense, la compare au budget et <strong>alerte</strong> proactivement via <span class="aws-svc">SNS</span>.</span></li>
+            <li><span class="check">✓</span><span>Construit <strong>Faucon</strong>, un agent d'<strong>action</strong> sûr&nbsp;: périmètre <code>env=dev</code> via <span class="aws-svc">AgentCore Policy</span>, simulation et <em>human-in-the-loop</em>.</span></li>
+            <li><span class="check">✓</span><span>Hébergé et tracé le tout sur <span class="aws-svc">AgentCore Runtime</span>, <span class="aws-svc">Memory</span> &amp; <span class="aws-svc">Observability</span>.</span></li>
+            <li><span class="check">✓</span><span>Utilisé <strong>Kiro</strong> comme co-constructeur, en équipe, pour échafauder, expliquer et itérer.</span></li>
+          </ul>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="site-footer">
+    <p>
+      <strong>Workshop · Boussole FinOps</strong> ·
+      Système FinOps multi-agents avec <span class="aws-svc">Amazon Bedrock AgentCore</span> &amp; <span class="aws-svc">Kiro</span> ·
+      © <span class="year">2026</span> onepoint
+    </p>
+  </footer>
+
+  <!-- Mermaid pour le diagramme d'architecture -->
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'neutral', securityLevel: 'loose' });
+  </script>
+  <script src="script.js"></script>
+</body>
+</html>
