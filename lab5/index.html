@@ -209,59 +209,8 @@
           <p class="section-lead">Le diagramme présente la boucle <strong>Voir → Anticiper → Agir</strong>, des sources de données jusqu'à l'action sous garde-fous.</p>
         </header>
 
-        <figure class="architecture-frame">
-          <pre class="mermaid">
-flowchart LR
-  classDef client   fill:#5A6B87,stroke:#36465A,color:#fff;
-  classDef mgmt     fill:#E7157B,stroke:#a50d57,color:#fff;
-  classDef compute  fill:#ED7100,stroke:#b35600,color:#fff;
-  classDef ml       fill:#01A88D,stroke:#017866,color:#fff;
-  classDef appint   fill:#C925D1,stroke:#8e1a94,color:#fff;
-  classDef security fill:#DD344C,stroke:#a3162a,color:#fff;
-  classDef ext      fill:#7AA116,stroke:#55710f,color:#fff;
-
-  USER["Équipe FinOps<br/>Inès · Tom"]:::client
-  subgraph CLOUD["AWS Cloud · eu-west-1"]
-    subgraph CORE["Amazon Bedrock AgentCore"]
-      IDENTITY["Identity"]:::security
-      POLICY["Policy<br/>env=dev"]:::security
-      MEMORY["Memory"]:::ml
-      subgraph RT["Runtime"]
-        ARGUS["Argus<br/>Analyste (RO)"]:::ml
-        SIBYLLE["Sibylle<br/>Prévision"]:::ml
-        FAUCON["Faucon<br/>Optimiseur"]:::ml
-      end
-      GATEWAY["Gateway<br/>outils MCP"]:::appint
-    end
-    subgraph TOOLS["Outils (Lambda)"]
-      T_DATA["CloudWatch · CUR<br/>Organizations · Trusted Advisor"]:::compute
-      T_LIC["Licences (API ext.)"]:::compute
-      T_OP["OnPrem (simulé)"]:::compute
-      T_NOTIF["Notification"]:::compute
-      T_REM["Remediation<br/>stop EC2/RDS"]:::compute
-    end
-    ORG["Organizations / CUR"]:::mgmt
-    CW["CloudWatch"]:::mgmt
-    SNS["Amazon SNS"]:::appint
-    FLEET["EC2 / RDS<br/>env=dev"]:::compute
-  end
-  LICAPI["API externe<br/>licences SaaS"]:::ext
-
-  USER -->|1 question/commande| IDENTITY
-  IDENTITY --> RT
-  ARGUS <-->|2 contexte| MEMORY
-  RT -->|3 appel d'outil| GATEWAY
-  GATEWAY --> TOOLS
-  T_DATA --> ORG
-  T_DATA --> CW
-  T_LIC --> LICAPI
-  T_NOTIF --> SNS
-  T_REM --> FLEET
-  SIBYLLE -->|4 projette & alerte| T_NOTIF
-  SNS -.->|5 alerte / validation| USER
-  FAUCON -->|6 action| POLICY
-  POLICY -->|7 si env=dev| T_REM
-          </pre>
+        <figure class="architecture-frame svg-frame">
+          <img src="images/architecture.svg" alt="Architecture multi-agents FinOps Boussole : Argus (voir), Sibylle (anticiper), Faucon (agir), outils Lambda via Gateway, sources AWS et hors-AWS">
           <figcaption class="caption">Système multi-agents <span class="aws-svc">AgentCore</span> — <strong>Argus</strong> (analyse) · <strong>Sibylle</strong> (prévision &amp; alerte via <span class="aws-svc">SNS</span>) · <strong>Faucon</strong> (action sous <span class="aws-svc">Policy</span>), tous reliés aux sources via <span class="aws-svc">Gateway</span>.</figcaption>
         </figure>
 
@@ -978,10 +927,6 @@ def stop_resources(targets, dry_run=True):
   </footer>
 
   <!-- Mermaid pour le diagramme d'architecture -->
-  <script type="module">
-    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
-    mermaid.initialize({ startOnLoad: true, theme: 'neutral', securityLevel: 'loose' });
-  </script>
   <script src="script.js"></script>
 </body>
 </html>

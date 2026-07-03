@@ -1,0 +1,69 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #f4f6f9;
+  color: #232f3e;
+  line-height: 1.6;
+  padding: 0 16px;
+}
+
+header {
+  text-align: center;
+  padding: 40px 0 24px;
+}
+header h1 { font-size: 2rem; }
+header p { color: #5a6b87; margin-top: 4px; }
+
+main { max-width: 680px; margin: 0 auto; }
+
+section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+h2 { font-size: 1.2rem; margin-bottom: 16px; }
+
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-weight: 600; margin-bottom: 4px; }
+.form-group select, .form-group textarea {
+  width: 100%; padding: 10px; border: 1px solid #cfd8e3;
+  border-radius: 8px; font-size: 0.95rem;
+}
+textarea { resize: vertical; }
+
+button {
+  background: #ed7100; color: #fff; border: none; padding: 10px 20px;
+  border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer;
+  transition: background 0.2s;
+}
+button:hover { background: #d46200; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+#btn-refresh { background: #37475a; margin-bottom: 12px; }
+#btn-refresh:hover { background: #232f3e; }
+
+.status { margin-top: 12px; font-style: italic; color: #01A88D; }
+.status.error { color: #DD344C; }
+
+.post-item {
+  border: 1px solid #e3e8ef; border-radius: 8px;
+  padding: 14px; margin-bottom: 10px;
+}
+.post-item .meta { font-size: 0.85rem; color: #5a6b87; }
+.post-item .text-preview {
+  margin: 6px 0; font-size: 0.92rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.post-item audio { width: 100%; margin-top: 8px; }
+.post-item .badge {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+}
+.badge.processing { background: #fff3cd; color: #856404; }
+.badge.updated { background: #d1f5e4; color: #0f5132; }
+
+.empty { color: #5a6b87; font-style: italic; }
