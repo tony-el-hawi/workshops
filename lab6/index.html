@@ -409,7 +409,11 @@ curl -s -X POST "$ENDPOINT" -H "Content-Type: application/json" \
                 </div>
                 <div class="info-box info">
                   <span class="icon-bubble">i</span>
-                  <div class="body"><p><span class="label">Lecture :</span> sous chaque attaque, la ligne <span class="val-pill">↳</span> montre le début de la réponse du bot. Le modèle tourne avec une <em>temperature</em> de 0.7 : la même attaque peut fuir à un passage et pas au suivant. Relancez le <em>scoreboard</em> si besoin, l'important est la tendance.</p></div>
+                  <div class="body">
+                    <p><span class="label">Lecture :</span> sous chaque attaque, la ligne <span class="val-pill">↳</span> montre le début de la réponse du bot (la détection, elle, lit la réponse entière). Pour tout afficher : <span class="copyable" data-copy="python3 score.py -v">python3 score.py -v</span>.</p>
+                    <p>• Le modèle tourne avec une <em>temperature</em> de 0.7 : la même attaque peut fuir à un passage et pas au suivant. Relancez le <em>scoreboard</em> si besoin, l'important est la tendance.</p>
+                    <p>• <span class="val-pill">[filtre integre Nova]</span> : <span class="aws-svc">Nova</span> a sa propre modération intégrée, active par défaut et non désactivable. Elle remplace parfois la réponse par <em>« The generated text has been blocked by our content filters. »</em> Ce n'est <strong>pas</strong> votre Guardrail : vous n'en avez pas encore créé.</p>
+                  </div>
                 </div>
                 <h4 class="step-group-title">Trouver le mot de passe dans les logs</h4>
                 <ol class="steps">
