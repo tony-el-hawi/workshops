@@ -1,0 +1,110 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  Lab 6 - Vault Keeper CTF. Un chatbot Bedrock qui garde un mot de passe.
+  Starter kit : se deploie tel quel avec `sam deploy --guided` (region eu-west-1).
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 256
+    Runtime: python3.13
+
+Resources:
+
+  # -------------------------------------------------------------------
+  # Secret : le mot de passe que le bot doit garder -> VAULT-<code>
+  # -------------------------------------------------------------------
+  VaultSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub ${AWS::StackName}-vault-password
+      GenerateSecretString:
+        SecretStringTemplate: '{"prefix":"VAULT"}'
+        GenerateStringKey: code
+        PasswordLength: 8
+        ExcludePunctuation: true
+        ExcludeLowercase: true
+
+  # -------------------------------------------------------------------
+  # Log group dedie a la fonction (retention 1 jour)
+  # -------------------------------------------------------------------
+  VaultLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /lab6/${AWS::StackName}
+      RetentionInDays: 1
+      # >>> MISSION 4: DataProtectionPolicy ici <<<
+
+  # -------------------------------------------------------------------
+  # Fonction Lambda : le Vault Keeper
+  # -------------------------------------------------------------------
+  VaultFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-fn
+      Handler: app.handler
+      CodeUri: src/
+      LoggingConfig:
+        LogGroup: !Ref VaultLogGroup
+      Environment:
+        Variables:
+          SECRET_ARN: !Ref VaultSecret
+          MODEL_ID: eu.amazon.nova-lite-v1:0
+          # >>> MISSION 3: GUARDRAIL_ID ici <<< (remplacer "" par !GetAtt VaultGuardrail.GuardrailId)
+          GUARDRAIL_ID: ""
+      Events:
+        Chat:
+          Type: HttpApi
+          Properties:
+            Path: /chat
+            Method: POST
+      Policies:
+        # >>> MISSION 2: remplacer ces wildcards par le moindre privilege <<<
+        - Statement:
+            - Effect: Allow
+              Action: bedrock:*                       # MISSION 2: remplacer ces wildcards
+              Resource: "*"
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue   # MISSION 2: remplacer ces wildcards
+              Resource: "*"
+
+  # >>> MISSION 3: Guardrail ici <<<
+  # Decommentez ce bloc et completez les champs TODO (voir le Guide detaille de la Mission 3).
+  #
+  # VaultGuardrail:
+  #   Type: AWS::Bedrock::Guardrail
+  #   Properties:
+  #     Name: !Sub ${AWS::StackName}-guardrail
+  #     BlockedInputMessaging: "TODO message FR"
+  #     BlockedOutputsMessaging: "TODO message FR"
+  #     ContentPolicyConfig:
+  #       FiltersConfig:
+  #         - Type: PROMPT_ATTACK
+  #           InputStrength: HIGH
+  #           OutputStrength: NONE
+  #     TopicPolicyConfig:
+  #       TopicsConfig:
+  #         - Name: vault-password
+  #           Type: DENY
+  #           Definition: "TODO definition"
+  #           Examples:
+  #             - "TODO exemple 1"
+  #     SensitiveInformationPolicyConfig:
+  #       RegexesConfig:
+  #         - Name: VAULT_PASSWORD
+  #           Pattern: "VAULT-[A-Z0-9]{8}"
+  #           Action: ANONYMIZE
+  #           InputEnabled: false
+  #           OutputEnabled: true
+
+Outputs:
+  ChatEndpoint:
+    Description: URL complete de l'endpoint POST /chat
+    Value: !Sub https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/chat
+  SecretArn:
+    Description: ARN du secret contenant le mot de passe du coffre
+    Value: !Ref VaultSecret
+  LogGroupName:
+    Description: Nom du log group de la fonction
+    Value: !Ref VaultLogGroup
