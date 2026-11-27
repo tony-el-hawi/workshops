@@ -1506,3 +1506,104 @@ body .section-lead .aws-svc {
   .challenge-head { flex-wrap: wrap; }
   .challenge-diff { width: 100%; }
 }
+
+/* =========================================================
+   LAB 6 — GUIDE DÉTAILLÉ : état ouvert immédiatement lisible
+   Fermé : bouton clair et engageant.
+   Ouvert : le bouton devient un onglet sombre soudé au panneau,
+   panneau chaud bordé d'orange, carte entière soulignée.
+   ========================================================= */
+
+/* sous-titre du bouton (la classe .hint est aussi utilisée par les défis bonus,
+   qui la masquent par défaut : on la réaffiche ici) */
+.expand-toggle .hint {
+  display: inline;
+  padding: 0;
+  background: none;
+  border: none;
+  animation: none;
+}
+
+/* ---------- fermé ---------- */
+.expand-toggle {
+  background: #ffffff;
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 15px 20px;
+  box-shadow: var(--shadow-sm);
+}
+.expand-toggle:hover {
+  background: #fff7ed;
+  border-color: var(--aws-orange);
+  box-shadow: 0 0 0 3px rgba(255, 153, 0, 0.15);
+}
+.expand-toggle .icon-bubble { transition: transform var(--transition); }
+
+/* ---------- ouvert : l'onglet ---------- */
+.expand-zone.is-open .expand-toggle {
+  background: linear-gradient(135deg, var(--aws-squid-ink) 0%, var(--aws-squid-ink-light) 100%);
+  border: 2px solid var(--aws-squid-ink);
+  border-radius: var(--radius) var(--radius) 0 0;
+  color: #ffffff;
+  box-shadow: inset 0 -3px 0 var(--aws-orange);
+}
+.expand-zone.is-open .expand-toggle:hover {
+  background: linear-gradient(135deg, var(--aws-squid-ink-light) 0%, #364a66 100%);
+}
+.expand-zone.is-open .expand-toggle .hint { color: var(--aws-orange-soft); font-style: normal; }
+.expand-zone.is-open .expand-toggle .chevron { color: var(--aws-orange); }
+.expand-zone.is-open .expand-toggle .icon-bubble { transform: rotate(180deg); }
+
+/* ---------- ouvert : le panneau ---------- */
+.expand-zone.is-open .expand-content {
+  margin-top: 0;
+  padding: 26px 28px 20px 34px;
+  background: #fffaf2;
+  border: 2px solid var(--aws-squid-ink);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  box-shadow: inset 5px 0 0 var(--aws-orange), var(--shadow);
+}
+
+/* étapes du guide : pastilles orange, cartes blanches sur fond chaud */
+.expand-content .steps > li::before {
+  background: var(--aws-orange);
+  color: var(--aws-squid-ink);
+  box-shadow: 0 2px 4px rgba(255, 153, 0, 0.3);
+}
+.expand-content .step-group-title {
+  color: var(--aws-squid-ink);
+  border-left-color: var(--aws-orange);
+}
+
+/* bouton de fermeture en bas du guide (ajouté par script.js) */
+.expand-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 22px;
+  padding: 11px;
+  background: transparent;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: all var(--transition);
+}
+.expand-close:hover {
+  background: #ffffff;
+  border-color: var(--aws-orange);
+  color: var(--aws-squid-ink);
+}
+
+/* la carte entière signale que son guide est ouvert */
+.task-card.guide-open {
+  box-shadow: 0 0 0 2px rgba(255, 153, 0, 0.6), var(--shadow);
+}
+
+@media print {
+  .expand-close { display: none; }
+}

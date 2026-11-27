@@ -39,22 +39,46 @@
     const targetId = btn.getAttribute('aria-controls');
     const target = document.getElementById(targetId);
     if (!target) return;
-    const setLabel = (open) => {
-      const lbl = btn.querySelector('.label-text');
-      if (lbl) lbl.textContent = open ? 'Masquer le Guide détaillé' : 'Afficher le Guide détaillé';
-    };
-    if (state.expanded[targetId]) {
-      target.classList.add('open');
-      btn.setAttribute('aria-expanded', 'true');
-      setLabel(true);
-    }
-    btn.addEventListener('click', () => {
-      const open = target.classList.toggle('open');
+    const zone = btn.closest('.expand-zone');
+    const card = btn.closest('.task-card');
+    const lbl = btn.querySelector('.label-text');
+    const hint = btn.querySelector('.hint');
+    const hintClosed = hint ? hint.textContent : '';
+
+    const render = (open) => {
+      target.classList.toggle('open', open);
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      setLabel(open);
+      if (zone) zone.classList.toggle('is-open', open);
+      if (card) card.classList.toggle('guide-open', open);
+      if (lbl) lbl.textContent = open ? 'Masquer le Guide détaillé' : 'Afficher le Guide détaillé';
+      if (hint) hint.textContent = open ? 'Guide ouvert · suivez les étapes ci-dessous' : hintClosed;
+    };
+    const setOpen = (open) => {
+      render(open);
       state.expanded[targetId] = open;
       saveState(state);
+    };
+
+    // Bouton de fermeture en bas du guide : évite de remonter un long guide.
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'expand-close';
+    closeBtn.innerHTML = '<span aria-hidden="true">▴</span> Masquer le Guide détaillé';
+    closeBtn.addEventListener('click', () => {
+      setOpen(false);
+      btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      btn.focus({ preventScroll: true });
     });
+    target.appendChild(closeBtn);
+
+    render(!!state.expanded[targetId]);
+    btn.addEventListener('click', () => setOpen(!target.classList.contains('open')));
+  });
+
+  // ---------- step numbering: honour <ol start="N"> (CSS counters ignore it) ----------
+  document.querySelectorAll('ol.steps[start]').forEach((ol) => {
+    const start = parseInt(ol.getAttribute('start'), 10);
+    if (!Number.isNaN(start)) ol.style.counterReset = `step ${start - 1}`;
   });
 
   // ---------- task completion + progress ----------
