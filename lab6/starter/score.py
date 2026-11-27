@@ -18,7 +18,25 @@ import sys
 import urllib.request
 
 REGION = os.environ.get("AWS_REGION", "eu-west-1")
-STACK = os.environ.get("STACK", "vault-keeper-" + os.environ.get("USER", "me"))
+
+
+def resolve_stack():
+    """Variable STACK, sinon stack_name du samconfig.toml de ce dossier."""
+    if os.environ.get("STACK"):
+        return os.environ["STACK"]
+    cfg = os.path.join(os.path.dirname(os.path.abspath(__file__)), "samconfig.toml")
+    try:
+        with open(cfg, encoding="utf-8") as fh:
+            match = re.search(r'^stack_name\s*=\s*"([^"]+)"', fh.read(), re.M)
+        if match:
+            return match.group(1)
+    except OSError:
+        pass
+    sys.exit("Nom de stack inconnu. Recollez le bloc de reprise du site "
+             "(export STACK=vault-keeper-<trigramme>).")
+
+
+STACK = resolve_stack()
 
 GREEN = "\033[92m"
 RED = "\033[91m"

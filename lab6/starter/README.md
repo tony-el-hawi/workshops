@@ -11,5 +11,6 @@ Contenu :
 - `score.py` - le scoreboard : `python3 score.py`
 - `attacks.txt` - les 10 attaques du scoreboard
 
-Deploiement rapide (region eu-west-1) : `sam deploy --guided`.
+CloudShell est partage : travaillez dans `~/<trigramme>/starter` uniquement.
+Deploiement : `sam deploy --guided --stack-name vault-keeper-<trigramme> --region eu-west-1`.
 Ne lancez pas `sam build` (voir le site, Mission 0).

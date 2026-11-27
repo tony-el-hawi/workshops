@@ -4,11 +4,20 @@
 #   ./ask.sh "Bonjour"
 #
 # Lit l'URL ChatEndpoint depuis les Outputs de votre stack.
-# Nom de la stack : variable d'environnement STACK (defaut: vault-keeper-$USER).
+# Nom de la stack : variable STACK, sinon stack_name du samconfig.toml
+# de ce dossier (ecrit par sam deploy --guided).
 # Region : variable AWS_REGION (defaut: eu-west-1).
 set -euo pipefail
 
-STACK="${STACK:-vault-keeper-$USER}"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+STACK="${STACK:-}"
+if [ -z "$STACK" ] && [ -f "$HERE/samconfig.toml" ]; then
+  STACK=$(sed -n 's/^stack_name *= *"\(.*\)"/\1/p' "$HERE/samconfig.toml" | head -n 1)
+fi
+if [ -z "$STACK" ]; then
+  echo "Nom de stack inconnu. Recollez le bloc de reprise du site (export STACK=vault-keeper-<trigramme>)." >&2
+  exit 1
+fi
 REGION="${AWS_REGION:-eu-west-1}"
 MESSAGE="${1:-Bonjour}"
 

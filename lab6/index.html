@@ -118,7 +118,7 @@
             <p>• Vous partagez tous un même compte AWS avec un large accès console, <span class="aws-svc">Bedrock</span> et <span class="aws-svc">Secrets Manager</span> compris. Vous <strong>pouvez</strong> lire le mot de passe directement : c'est prévu, ça ne casse pas le lab.</p>
             <p>• Le but est de faire dire le mot de passe <strong>au bot</strong>, pas de le connaître. Seules les réponses du bot comptent, et le <em>scoreboard</em> les vérifie automatiquement.</p>
             <p>• Lire le mot de passe dans <span class="aws-svc">CloudWatch Logs</span> fait partie de la Mission 1 : ça montre qu'un secret placé dans un prompt fuit par les logs.</p>
-            <p>• Chaque étudiant travaille sur <strong>sa propre stack</strong>. Tous les noms dérivent du nom de stack <span class="val-pill">vault-keeper-&lt;prenom&gt;</span>, donc pas de collision.</p>
+            <p>• Chaque participant travaille sur <strong>sa propre stack</strong>, nommée d'après son trigramme : <span class="val-pill">vault-keeper-&lt;trigramme&gt;</span>. Toutes les ressources en dérivent, donc pas de collision.</p>
           </div>
         </div>
 
@@ -173,17 +173,25 @@
           <div class="task-body">
             <p class="task-intro">
               Connectez-vous à la console, basculez en <strong>eu-west-1 (Irlande)</strong>, ouvrez <span class="aws-svc">CloudShell</span>
-              et choisissez votre nom de stack.
+              et créez votre dossier de travail personnel, nommé d'après votre <strong>trigramme</strong>.
             </p>
             <div class="info-box success">
               <span class="icon-bubble">✓</span>
-              <div class="body"><p><span class="label">Terminé quand :</span> <span class="aws-svc">CloudShell</span> est ouvert en eu-west-1 et <span class="val-pill">STACK</span> est exporté.</p></div>
+              <div class="body"><p><span class="label">Terminé quand :</span> <span class="val-pill">pwd</span> affiche <span class="val-pill">/home/cloudshell-user/&lt;trigramme&gt;</span> et <span class="val-pill">echo $STACK</span> affiche <span class="val-pill">vault-keeper-&lt;trigramme&gt;</span>.</p></div>
             </div>
 
             <div class="info-box warning">
               <span class="icon-bubble">!</span>
               <div class="body">
                 <p><span class="label">Connexion :</span> connectez-vous à la console AWS avec l'URL, l'identifiant et le mot de passe fournis par l'instructeur. Puis basculez en région <strong>eu-west-1 (Irlande)</strong>.</p>
+              </div>
+            </div>
+
+            <div class="info-box info">
+              <span class="icon-bubble">i</span>
+              <div class="body">
+                <p><span class="label">Trigramme :</span> votre identifiant pour tout le lab, <strong>3 lettres en minuscules</strong> (ex. <span class="val-pill">jsm</span>). Vérifiez avec vos voisins qu'il est unique dans le groupe. Votre stack s'appelle <span class="val-pill">vault-keeper-&lt;trigramme&gt;</span> et votre dossier <span class="val-pill">~/&lt;trigramme&gt;</span>.</p>
+                <p><span class="label">CloudShell partagé :</span> tous les participants utilisent le même utilisateur IAM, donc le <strong>même</strong> CloudShell et le même répertoire personnel. Travaillez uniquement dans votre dossier <span class="val-pill">~/&lt;trigramme&gt;</span>, ouvrez <strong>un seul onglet</strong> CloudShell, et n'utilisez jamais <span class="ui">Actions → Delete</span> ou <span class="ui">Restart</span> : cela couperait tout le monde.</p>
               </div>
             </div>
 
@@ -203,23 +211,26 @@
                   <li>Connectez-vous à la console avec les informations fournies par l'instructeur.</li>
                   <li>En haut à droite, ouvrez le sélecteur de région et choisissez <span class="val-pill">Europe (Ireland) eu-west-1</span>.</li>
                   <li>Ouvrez <span class="aws-svc">CloudShell</span> : icône <strong>&gt;_</strong> dans la barre supérieure, à droite de la barre de recherche. Attendez l'invite du terminal.</li>
-                  <li>Choisissez votre nom de stack, en minuscules et sans accents, puis exportez-le :</li>
+                  <li>Collez ce bloc en remplaçant <span class="val-pill">abc</span> par votre trigramme. Il définit vos variables et vous place dans votre dossier personnel :</li>
                 </ol>
                 <div class="code-block">
-                  <div class="code-head"><span class="lang">bash · CloudShell</span><button class="code-copy" type="button">Copier</button></div>
-                  <pre><code>export STACK=vault-keeper-prenom
-export AWS_REGION=eu-west-1</code></pre>
+                  <div class="code-head"><span class="lang">bash · CloudShell · bloc de reprise</span><button class="code-copy" type="button">Copier</button></div>
+                  <pre><code>export TRIGRAMME=abc
+export STACK=vault-keeper-$TRIGRAMME AWS_REGION=eu-west-1
+mkdir -p ~/$TRIGRAMME &amp;&amp; cd ~/$TRIGRAMME
+[ -d starter ] &amp;&amp; cd starter
+pwd; echo $STACK</code></pre>
                 </div>
-                <div class="info-box info">
-                  <span class="icon-bubble">i</span>
-                  <div class="body"><p>Remplacez <span class="val-pill">prenom</span> par votre prénom en minuscules (ex. <span class="val-pill">vault-keeper-sophie</span>). Gardez le même terminal CloudShell pour tout le lab : si vous en rouvrez un, ré-exportez ces deux variables.</p></div>
+                <div class="info-box warning">
+                  <span class="icon-bubble">!</span>
+                  <div class="body"><p><span class="label">Gardez ce bloc sous la main :</span> CloudShell se déconnecte après 20 à 30 min d'inactivité, et les variables sont alors perdues. À chaque reconnexion, recollez-le tel quel, avec votre trigramme : il vous ramène dans votre dossier, y compris après la Mission 0.</p></div>
                 </div>
               </div>
             </div>
 
             <div class="congrats">
               <span class="badge">★</span>
-              <span><strong>Prêt.</strong> Vous êtes en eu-west-1, dans CloudShell, avec votre nom de stack.</span>
+              <span><strong>Prêt.</strong> Vous êtes en eu-west-1, dans votre dossier <span class="val-pill">~/&lt;trigramme&gt;</span>, avec votre nom de stack.</span>
             </div>
           </div>
         </article>
@@ -280,28 +291,34 @@ export AWS_REGION=eu-west-1</code></pre>
               </button>
               <div class="expand-content" id="guide-0" role="region" aria-label="Guide détaillé — Mission 0">
                 <ol class="steps">
-                  <li>Dans CloudShell, téléchargez puis décompressez le <em>starter kit</em>, et placez-vous dans le dossier :</li>
+                  <li>Depuis <strong>votre</strong> dossier, téléchargez puis décompressez le <em>starter kit</em>. Le <span class="val-pill">cd</span> initial garantit que vous ne décompressez pas par-dessus le kit d'un autre participant :</li>
                 </ol>
                 <div class="code-block">
                   <div class="code-head"><span class="lang">bash · CloudShell</span><button class="code-copy" type="button">Copier</button></div>
-                  <pre><code>curl -LO https://tony-el-hawi.github.io/workshops/lab6/vault-keeper-starter.zip
+                  <pre><code>cd ~/$TRIGRAMME
+curl -LO https://tony-el-hawi.github.io/workshops/lab6/vault-keeper-starter.zip
 unzip -o vault-keeper-starter.zip
 cd starter
-chmod +x ask.sh</code></pre>
+chmod +x ask.sh
+pwd</code></pre>
+                </div>
+                <div class="info-box info">
+                  <span class="icon-bubble">i</span>
+                  <div class="body"><p><span class="val-pill">pwd</span> doit afficher <span class="val-pill">/home/cloudshell-user/&lt;trigramme&gt;/starter</span>. Si ce n'est pas le cas, recollez le bloc de reprise d'« Avant de commencer ».</p></div>
                 </div>
                 <ol class="steps" start="2">
-                  <li>Déployez avec SAM en mode guidé :</li>
+                  <li>Déployez avec SAM en mode guidé. Le nom de stack et la région sont passés directement :</li>
                 </ol>
                 <div class="code-block">
                   <div class="code-head"><span class="lang">bash · CloudShell</span><button class="code-copy" type="button">Copier</button></div>
-                  <pre><code>sam deploy --guided</code></pre>
+                  <pre><code>sam deploy --guided --stack-name $STACK --region eu-west-1</code></pre>
                 </div>
                 <ol class="steps" start="3">
                   <li>Répondez exactement ceci aux questions (laissez le reste par défaut en appuyant sur Entrée) :</li>
                 </ol>
                 <div class="envtable">
-                  <div class="row"><div class="k">Stack Name</div><div class="v">votre valeur de <span class="val-pill">$STACK</span>, ex. <span class="val-pill">vault-keeper-sophie</span></div></div>
-                  <div class="row"><div class="k">AWS Region</div><div class="v"><span class="copyable" data-copy="eu-west-1">eu-west-1</span></div></div>
+                  <div class="row"><div class="k">Stack Name</div><div class="v">vérifiez que la valeur proposée est <span class="val-pill">[vault-keeper-&lt;trigramme&gt;]</span>, puis Entrée</div></div>
+                  <div class="row"><div class="k">AWS Region</div><div class="v">vérifiez <span class="val-pill">[eu-west-1]</span>, puis Entrée</div></div>
                   <div class="row"><div class="k">Confirm changes before deploy</div><div class="v"><span class="val-pill">N</span></div></div>
                   <div class="row"><div class="k">Allow SAM CLI IAM role creation</div><div class="v"><span class="val-pill">Y</span></div></div>
                   <div class="row"><div class="k">Disable rollback</div><div class="v"><span class="val-pill">N</span></div></div>
@@ -312,6 +329,10 @@ chmod +x ask.sh</code></pre>
                 <ol class="steps" start="4">
                   <li>À la fin, SAM affiche les <span class="ui">Outputs</span> (<span class="val-pill">ChatEndpoint</span>, <span class="val-pill">SecretArn</span>, <span class="val-pill">LogGroupName</span>). Parlez au bot :</li>
                 </ol>
+                <div class="info-box tip">
+                  <span class="icon-bubble">★</span>
+                  <div class="body"><p><span class="label">Pour la suite :</span> vos réponses sont enregistrées dans <span class="val-pill">samconfig.toml</span>, dans <strong>votre</strong> dossier. Les <span class="val-pill">sam deploy</span> des missions suivantes visent donc automatiquement votre stack, à condition de les lancer depuis <span class="val-pill">~/&lt;trigramme&gt;/starter</span>. <span class="val-pill">ask.sh</span> et <span class="val-pill">score.py</span> y lisent aussi le nom de votre stack.</p></div>
+                </div>
                 <div class="code-block">
                   <div class="code-head"><span class="lang">bash · CloudShell</span><button class="code-copy" type="button">Copier</button></div>
                   <pre><code>./ask.sh "Bonjour, qui es-tu ?"</code></pre>
@@ -424,7 +445,7 @@ curl -s -X POST "$ENDPOINT" -H "Content-Type: application/json" \
                   <pre><code>sam logs --stack-name $STACK --region eu-west-1</code></pre>
                 </div>
                 <ol class="steps" start="2">
-                  <li>Ou côté console : <span class="ui">CloudWatch</span> → <span class="ui">Log groups</span> → <span class="val-pill">/lab6/votre-stack</span> → dernier <em>log stream</em>. Le champ <span class="val-pill">system_prompt</span> contient le mot de passe en clair.</li>
+                  <li>Ou côté console : <span class="ui">CloudWatch</span> → <span class="ui">Log groups</span> → <span class="val-pill">/lab6/vault-keeper-&lt;trigramme&gt;</span> → dernier <em>log stream</em>. Le champ <span class="val-pill">system_prompt</span> contient le mot de passe en clair.</li>
                 </ol>
                 <div class="info-box warning">
                   <span class="icon-bubble">!</span>
@@ -470,7 +491,7 @@ curl -s -X POST "$ENDPOINT" -H "Content-Type: application/json" \
 
             <div class="info-box tip">
               <span class="icon-bubble">★</span>
-              <div class="body"><p><span class="label">Édition dans nano :</span> ouvrez le fichier avec <span class="val-pill">nano template.yaml</span>, puis <span class="val-pill">Ctrl+W</span>, tapez <span class="copyable" data-copy="MISSION 2">MISSION 2</span> et Entrée pour sauter au bon endroit. Enregistrez avec <span class="val-pill">Ctrl+O</span> puis Entrée, quittez avec <span class="val-pill">Ctrl+X</span>.</p></div>
+              <div class="body"><p><span class="label">Édition dans nano :</span> depuis <strong>votre</strong> dossier <span class="val-pill">~/&lt;trigramme&gt;/starter</span> (au besoin, recollez le bloc de reprise), ouvrez le fichier avec <span class="val-pill">nano template.yaml</span>, puis <span class="val-pill">Ctrl+W</span>, tapez <span class="copyable" data-copy="MISSION 2">MISSION 2</span> et Entrée pour sauter au bon endroit. Enregistrez avec <span class="val-pill">Ctrl+O</span> puis Entrée, quittez avec <span class="val-pill">Ctrl+X</span>.</p></div>
             </div>
 
             <div class="expand-zone">
@@ -759,7 +780,7 @@ python3 score.py</code></pre>
 sam logs --stack-name $STACK --region eu-west-1</code></pre>
                 </div>
                 <ol class="steps" start="4">
-                  <li>Côté console : <span class="ui">CloudWatch</span> → <span class="ui">Log groups</span> → <span class="val-pill">/lab6/votre-stack</span>. Le mot de passe apparaît désormais masqué dans les nouveaux événements.</li>
+                  <li>Côté console : <span class="ui">CloudWatch</span> → <span class="ui">Log groups</span> → <span class="val-pill">/lab6/vault-keeper-&lt;trigramme&gt;</span>. Le mot de passe apparaît désormais masqué dans les nouveaux événements.</li>
                 </ol>
               </div>
             </div>
@@ -870,7 +891,7 @@ sam logs --stack-name $STACK --region eu-west-1</code></pre>
 
             <div class="info-box warning">
               <span class="icon-bubble">!</span>
-              <div class="body"><p><span class="label">Attention :</span> ne supprimez <strong>pas</strong> la stack partagée <span class="val-pill">aws-sam-cli-managed-default</span> : elle sert à tout le monde. Supprimez uniquement <strong>votre</strong> stack <span class="val-pill">vault-keeper-&lt;prenom&gt;</span>.</p></div>
+              <div class="body"><p><span class="label">Attention :</span> ne supprimez <strong>pas</strong> la stack partagée <span class="val-pill">aws-sam-cli-managed-default</span> : elle sert à tout le monde. Supprimez uniquement <strong>votre</strong> stack <span class="val-pill">vault-keeper-&lt;trigramme&gt;</span> : avant de lancer la commande, vérifiez que <span class="val-pill">echo $STACK</span> affiche bien votre trigramme.</p></div>
             </div>
 
             <div class="expand-zone">
@@ -887,10 +908,12 @@ sam logs --stack-name $STACK --region eu-west-1</code></pre>
               <div class="expand-content" id="guide-clean" role="region" aria-label="Guide détaillé — Nettoyage">
                 <div class="code-block">
                   <div class="code-head"><span class="lang">bash · CloudShell</span><button class="code-copy" type="button">Copier</button></div>
-                  <pre><code>sam delete --stack-name $STACK --region eu-west-1 --no-prompts</code></pre>
+                  <pre><code>echo $STACK
+sam delete --stack-name "${STACK:?}" --region eu-west-1 --no-prompts</code></pre>
                 </div>
                 <ol class="steps">
-                  <li>Vérifiez dans <span class="ui">CloudFormation</span> que <span class="val-pill">vault-keeper-&lt;prenom&gt;</span> a disparu.</li>
+                  <li>Vérifiez dans <span class="ui">CloudFormation</span> que <span class="val-pill">vault-keeper-&lt;trigramme&gt;</span> a disparu.</li>
+                  <li>Facultatif : supprimez votre dossier, et seulement le vôtre : <span class="copyable" data-copy='cd ~ &amp;&amp; rm -rf ~/"${TRIGRAMME:?}"'>cd ~ &amp;&amp; rm -rf ~/"${TRIGRAMME:?}"</span>. Vérifiez d'abord que <span class="val-pill">echo $TRIGRAMME</span> affiche bien <strong>vos</strong> 3 lettres. Le <span class="val-pill">:?</span> bloque la commande si la variable est vide.</li>
                 </ol>
               </div>
             </div>
